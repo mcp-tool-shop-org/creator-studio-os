@@ -1,0 +1,135 @@
+import { access, mkdir, readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { join } from "node:path";
+import { loadConfig } from "./config.js";
+import { buildProjectFcpxml } from "./fcpxml/builder.js";
+import { validateFcpxmlAgainstDtd } from "./fcpxml/validate.js";
+
+interface CheckResult {
+  name: string;
+  ok: boolean;
+  detail: string;
+}
+
+async function which(cmd: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const p = spawn("which", [cmd], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    p.stdout.on("data", (d) => (out += d.toString()));
+    p.on("close", (code) => resolve(code === 0 ? out.trim() : null));
+    p.on("error", () => resolve(null));
+  });
+}
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function verify(): Promise<{
+  ok: boolean;
+  checks: CheckResult[];
+}> {
+  const cfg = loadConfig();
+  const checks: CheckResult[] = [];
+
+  checks.push({
+    name: "platform",
+    ok: process.platform === "darwin",
+    detail: `process.platform = ${process.platform}`,
+  });
+
+  const osa = await which("osascript");
+  checks.push({
+    name: "osascript",
+    ok: osa !== null,
+    detail: osa ?? "not on PATH",
+  });
+
+  const xmllint = await which("xmllint");
+  checks.push({
+    name: "xmllint",
+    ok: xmllint !== null,
+    detail:
+      xmllint ??
+      "not installed (DTD validation will be skipped — install via 'brew install libxml2')",
+  });
+
+  const fcpInstalled = await exists(cfg.fcpAppPath);
+  checks.push({
+    name: "final-cut-pro",
+    ok: fcpInstalled,
+    detail: fcpInstalled ? cfg.fcpAppPath : `missing: ${cfg.fcpAppPath}`,
+  });
+
+  const dtd = await exists(cfg.fcpDtdPath);
+  checks.push({
+    name: "fcpxml-dtd",
+    ok: dtd,
+    detail: dtd ? cfg.fcpDtdPath : `missing: ${cfg.fcpDtdPath}`,
+  });
+
+  const dataDir = await exists(cfg.dataDir);
+  if (!dataDir) {
+    await mkdir(join(cfg.dataDir, "projects"), { recursive: true });
+    await mkdir(join(cfg.dataDir, "shared", "brand"), { recursive: true });
+    await mkdir(join(cfg.dataDir, "shared", "presets"), { recursive: true });
+  }
+  checks.push({
+    name: "data-dir",
+    ok: true,
+    detail: `${cfg.dataDir} (${dataDir ? "existed" : "created"})`,
+  });
+
+  if (fcpInstalled && dtd) {
+    try {
+      const built = buildProjectFcpxml({
+        eventName: "Verify Event",
+        projectName: "Verify Project",
+        format: {
+          id: "r1",
+          name: "FFVideoFormat1080p2997",
+          frameRate: "29.97",
+          resolution: { width: 1920, height: 1080 },
+          colorSpace: "1-1-1 (Rec. 709)",
+        },
+        assets: [],
+        spine: [],
+        markers: [],
+      });
+      const v = await validateFcpxmlAgainstDtd(built.xml, cfg.fcpDtdPath);
+      checks.push({
+        name: "fcpxml-roundtrip",
+        ok: v.valid,
+        detail: v.output,
+      });
+    } catch (e) {
+      checks.push({
+        name: "fcpxml-roundtrip",
+        ok: false,
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  const ok = checks.every((c) => c.ok);
+  return { ok, checks };
+}
+
+export function formatVerify(result: {
+  ok: boolean;
+  checks: CheckResult[];
+}): string {
+  const lines: string[] = [];
+  for (const c of result.checks) {
+    const mark = c.ok ? "PASS" : "FAIL";
+    lines.push(`[${mark}] ${c.name.padEnd(22)} ${c.detail}`);
+  }
+  lines.push("");
+  lines.push(result.ok ? "All checks passed." : "Some checks FAILED.");
+  return lines.join("\n");
+}
