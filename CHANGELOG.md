@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-05-04
+
+### Added (FCP authoring breadth)
+
+- **Title spine items** with bundled "Custom" Build In:Out title effect (`.../Titles.localized/Build In:Out.localized/Custom.localized/Custom.moti`) as default. Configurable via `effectUid` / `effectName` on the title spec. Text styling: font, fontSize, fontColor (RGBA 0..1), alignment, bold, italic.
+- **Transitions** on the spine. `kind: "transition"` items emit `<transition name="..." offset="..." duration="..."/>`. "Cross Dissolve", "Cross Blur", "Fade to Color" work via name attribute alone.
+- **Per-clip audio levels** via `volumeDb` on `asset-clip` specs. `0` (default) emits no element; non-zero emits `<adjust-volume amount="-6dB"/>` etc.
+- **Roles** — `videoRole` and `audioRole` attributes on `asset-clip` specs (e.g. `"Video.global"`, `"Dialogue.dialogue"`, `"Music.music"`, `"Effects.effects"`). Inherited by FCP's role-based audio routing.
+- **Explicit library location** — `libraryLocation` on the project spec emits `<library location="file://...">` so FCP imports into / creates the named library on disk without the "import to which library?" dialog.
+
+### Added (docs)
+
+- `docs/reference/effect-uids.md` — UID catalog for built-in titles, with the verified Custom title path and how to discover more.
+- `docs/roadmap-compressor.md` — Compressor wing milestones (human-readable preset names, multi-job batches, watch folders, FCP "Send to Compressor" handoff).
+
+### Tests
+
+- 6 new FCPXML builder tests (titles, transitions, adjust-volume on/off, roles, library location). 27 passing total.
+
+### Internal
+
+- Refactored builder spine emission to a per-kind dispatch with `renderClip` / `renderTitle` / `renderTransition`. Effects auto-deduplicated into resources.
+- Spec-level `fcpxmlVersion` now honored end-to-end (was previously hardcoded in builder template).
+
 ## [1.1.0] — 2026-05-04
 
 ### Added

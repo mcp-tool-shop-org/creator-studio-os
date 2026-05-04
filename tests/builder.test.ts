@@ -71,21 +71,118 @@ describe("buildProjectFcpxml", () => {
     ).toThrow(CreatorStudioError);
   });
 
-  it("rejects title spine items in v1.0.0", () => {
-    expect(() =>
-      buildProjectFcpxml({
-        eventName: "E",
-        projectName: "P",
-        spine: [
-          {
-            kind: "title",
-            text: "Hi",
-            offsetSeconds: 0,
-            durationSeconds: 3,
-          },
-        ],
-      }),
-    ).toThrow(/Title spine items/);
+  it("emits a title with effect resource and text-style-def", () => {
+    const { xml } = buildProjectFcpxml({
+      eventName: "E",
+      projectName: "P",
+      spine: [
+        {
+          kind: "title",
+          name: "Opening",
+          text: "Hello, world",
+          offsetSeconds: 0,
+          durationSeconds: 3,
+        },
+      ],
+    });
+    expect(xml).toContain("<effect ");
+    expect(xml).toContain("Custom.moti");
+    expect(xml).toContain("<title ");
+    expect(xml).toContain("Hello, world");
+    expect(xml).toContain("<text-style-def ");
+    expect(xml).toContain("<text-style ");
+  });
+
+  it("emits a transition with name + duration", () => {
+    const { xml } = buildProjectFcpxml({
+      eventName: "E",
+      projectName: "P",
+      spine: [
+        {
+          kind: "transition",
+          name: "Cross Dissolve",
+          offsetSeconds: 5,
+          durationSeconds: 2,
+        },
+      ],
+    });
+    expect(xml).toMatch(/<transition\b[^>]*name="Cross Dissolve"/);
+    expect(xml).toMatch(/duration="\d+\/30000s"/);
+  });
+
+  it("emits adjust-volume when volumeDb is non-zero", () => {
+    const { xml } = buildProjectFcpxml({
+      eventName: "E",
+      projectName: "P",
+      assets: [
+        { id: "a1", name: "A", src: "/tmp/a.mov", durationSeconds: 5 },
+      ],
+      spine: [
+        {
+          kind: "asset-clip",
+          ref: "a1",
+          name: "A",
+          offsetSeconds: 0,
+          durationSeconds: 5,
+          volumeDb: -6,
+        },
+      ],
+    });
+    expect(xml).toContain('<adjust-volume amount="-6dB"/>');
+  });
+
+  it("omits adjust-volume when volumeDb is 0", () => {
+    const { xml } = buildProjectFcpxml({
+      eventName: "E",
+      projectName: "P",
+      assets: [
+        { id: "a1", name: "A", src: "/tmp/a.mov", durationSeconds: 5 },
+      ],
+      spine: [
+        {
+          kind: "asset-clip",
+          ref: "a1",
+          name: "A",
+          offsetSeconds: 0,
+          durationSeconds: 5,
+        },
+      ],
+    });
+    expect(xml).not.toContain("adjust-volume");
+  });
+
+  it("emits videoRole + audioRole on asset-clip when set", () => {
+    const { xml } = buildProjectFcpxml({
+      eventName: "E",
+      projectName: "P",
+      assets: [
+        { id: "a1", name: "A", src: "/tmp/a.mov", durationSeconds: 5 },
+      ],
+      spine: [
+        {
+          kind: "asset-clip",
+          ref: "a1",
+          name: "A",
+          offsetSeconds: 0,
+          durationSeconds: 5,
+          videoRole: "B-roll.broll",
+          audioRole: "Dialogue.dialogue",
+        },
+      ],
+    });
+    expect(xml).toContain('videoRole="B-roll.broll"');
+    expect(xml).toContain('audioRole="Dialogue.dialogue"');
+  });
+
+  it("emits library location attribute when libraryLocation is set", () => {
+    const { xml } = buildProjectFcpxml({
+      eventName: "E",
+      projectName: "P",
+      libraryLocation: "/Users/test/Movies/Demo.fcpbundle",
+    });
+    expect(xml).toMatch(
+      /<library location="file:\/\/\/Users\/test\/Movies\/Demo\.fcpbundle"/,
+    );
   });
 
   it("attaches markers inside the asset-clip whose range contains them", () => {

@@ -11,17 +11,15 @@ The big picture for `fcp_*` tooling. Lives separately from the cross-app roadmap
 - Project directory schema + scaffolding
 - 15 tools, 16 tests, real-FCP write+read round-trip proven
 
-## v1.1 — Authoring breadth (next)
+## v1.2 — Authoring breadth (shipped 2026-05-04)
 
-The smallest set of additions that make FCP useful for real cuts beyond "drop clips on a spine":
+- ✅ **Titles** (`title` spine items) with bundled "Custom" Build In:Out title effect (`.../Titles.localized/Build In:Out.localized/Custom.localized/Custom.moti`) as default. Configurable text styling: font / size / color / alignment / bold / italic. Effect UID overridable per-title.
+- ✅ **Transitions** — `<transition name="..." offset="..." duration="..."/>`. Default Apple transitions ("Cross Dissolve", "Cross Blur", "Fade to Color") resolve via name attribute alone.
+- ✅ **Audio levels** — `volumeDb` on `asset-clip` specs emits `<adjust-volume amount="-6dB"/>` etc. Zero (default) emits no element.
+- ✅ **Roles** — `videoRole` / `audioRole` attributes on `asset-clip` specs.
+- ✅ **Library location** — `libraryLocation` on the project spec emits `<library location="file://...">`. FCP creates / opens the named library on disk without the "import to which library?" dialog.
 
-- **Titles** (`title` spine items). Requires an effect reference UID. Ship with one bundled "Custom" title effect that FCP recognizes from a stable UID, plus a way to point at user-installed title effects by name.
-- **Transitions** between adjacent spine items. `transition` element with offset / duration.
-- **Audio levels** via `adjust-volume` on `asset-clip` / `audio` elements.
-- **Roles** — `videoRole` and `audioRole` attributes for organizational metadata. Default to `video`/`dialogue`/`music`/`effects`. Lets cuts inherit FCP's role-based audio routing.
-- **Library location**. Explicit `<library location="file:///path/to/Lib.fcpbundle">`  so FCP creates / opens the named library at the named path on import, instead of prompting "Import to which library?". Removes the dialog gate from the import flow.
-
-Tests: golden FCPXML fixtures for each new feature, validated against the bundled DTD.
+11 builder tests covering each new feature. Real-FCP smoke test verified DTD round-trip + import.
 
 ## v1.2 — Anchored items, multicam, compound clips
 

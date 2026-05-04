@@ -1,6 +1,11 @@
 import { pathToFileURL } from "node:url";
 import { CreatorStudioError } from "../errors.js";
-import { ProjectSpecSchema, type ProjectSpec } from "./types.js";
+import {
+  ProjectSpecSchema,
+  type ProjectSpec,
+  type TitleSpec,
+  type TransitionSpec,
+} from "./types.js";
 import { frameDurationAttr, secondsToTime } from "./time.js";
 
 function escapeXmlAttr(s: string): string {
@@ -11,8 +16,16 @@ function escapeXmlAttr(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function escapeXmlText(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function srcToFileUrl(src: string): string {
-  if (src.startsWith("file://") || src.startsWith("http://") || src.startsWith("https://")) {
+  if (
+    src.startsWith("file://") ||
+    src.startsWith("http://") ||
+    src.startsWith("https://")
+  ) {
     return src;
   }
   return pathToFileURL(src).toString();
@@ -35,27 +48,45 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
   const spec = parsed.data;
   const rate = spec.format.frameRate;
 
-  const titleSpine = spec.spine.find((s) => s.kind === "title");
-  if (titleSpine) {
-    throw new CreatorStudioError(
-      "E_FCPXML_INVALID",
-      "Title spine items are not supported in v1.0.0",
-      "Cut the title item or wait for v1.1 (titles require an effect reference).",
-    );
-  }
+  const titles = spec.spine.filter(
+    (s): s is TitleSpec => s.kind === "title",
+  );
+  const transitions = spec.spine.filter(
+    (s): s is TransitionSpec => s.kind === "transition",
+  );
 
-  const totalDurationSeconds =
+  const sequenceEnd =
     spec.spine.length === 0
       ? 1
       : Math.max(
+          1,
           ...spec.spine
-            .filter((s) => s.kind === "asset-clip")
+            .filter((s) => s.kind === "asset-clip" || s.kind === "title")
             .map((s) => s.offsetSeconds + s.durationSeconds),
         );
 
-  const sequenceDuration = secondsToTime(totalDurationSeconds, rate);
+  const sequenceDuration = secondsToTime(sequenceEnd, rate);
+
+  const titleEffects = new Map<string, { id: string; name: string; uid: string }>();
+  let nextEffectId = 100;
+  for (const t of titles) {
+    if (!titleEffects.has(t.effectUid)) {
+      titleEffects.set(t.effectUid, {
+        id: `r${nextEffectId++}`,
+        name: t.effectName,
+        uid: t.effectUid,
+      });
+    }
+  }
 
   const formatXml = `    <format id="${escapeXmlAttr(spec.format.id)}" name="${escapeXmlAttr(spec.format.name)}" frameDuration="${frameDurationAttr(rate)}" width="${spec.format.resolution.width}" height="${spec.format.resolution.height}" colorSpace="${escapeXmlAttr(spec.format.colorSpace)}"/>`;
+
+  const effectsXml = Array.from(titleEffects.values())
+    .map(
+      (e) =>
+        `    <effect id="${escapeXmlAttr(e.id)}" name="${escapeXmlAttr(e.name)}" uid="${escapeXmlAttr(e.uid)}"/>`,
+    )
+    .join("\n");
 
   const assetsXml = spec.assets
     .map((a) => {
@@ -84,26 +115,80 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
       .join("\n");
   };
 
-  const spineXml = spec.spine
-    .filter((s) => s.kind === "asset-clip")
-    .map((c) => {
-      const offset = secondsToTime(c.offsetSeconds, rate);
-      const dur = secondsToTime(c.durationSeconds, rate);
-      const start = secondsToTime(c.startSeconds, rate);
-      const markers = spineMarkersFor(c.offsetSeconds, c.durationSeconds);
-      const enabled = c.enabled ? "" : ` enabled="0"`;
-      const inner = markers ? `\n${markers}\n      ` : "";
-      return `      <asset-clip ref="${escapeXmlAttr(c.ref)}" name="${escapeXmlAttr(c.name)}" offset="${offset}" duration="${dur}" start="${start}"${enabled}>${inner}</asset-clip>`;
-    })
+  const renderClip = (
+    c: Extract<(typeof spec.spine)[number], { kind: "asset-clip" }>,
+  ) => {
+    const offset = secondsToTime(c.offsetSeconds, rate);
+    const dur = secondsToTime(c.durationSeconds, rate);
+    const start = secondsToTime(c.startSeconds, rate);
+    const markers = spineMarkersFor(c.offsetSeconds, c.durationSeconds);
+    const enabled = c.enabled ? "" : ` enabled="0"`;
+    const videoRole = c.videoRole
+      ? ` videoRole="${escapeXmlAttr(c.videoRole)}"`
+      : "";
+    const audioRole = c.audioRole
+      ? ` audioRole="${escapeXmlAttr(c.audioRole)}"`
+      : "";
+
+    const innerParts: string[] = [];
+    if (c.volumeDb !== 0) {
+      innerParts.push(`        <adjust-volume amount="${c.volumeDb}dB"/>`);
+    }
+    if (markers) innerParts.push(markers);
+    const inner = innerParts.length > 0 ? `\n${innerParts.join("\n")}\n      ` : "";
+
+    return `      <asset-clip ref="${escapeXmlAttr(c.ref)}" name="${escapeXmlAttr(c.name)}" offset="${offset}" duration="${dur}" start="${start}"${enabled}${videoRole}${audioRole}>${inner}</asset-clip>`;
+  };
+
+  const renderTitle = (t: TitleSpec) => {
+    const effect = titleEffects.get(t.effectUid)!;
+    const offset = secondsToTime(t.offsetSeconds, rate);
+    const dur = secondsToTime(t.durationSeconds, rate);
+    const lane = t.lane !== 0 ? ` lane="${t.lane}"` : "";
+    const styleId = `ts-${escapeXmlAttr(t.name).replace(/[^a-zA-Z0-9-]/g, "")}-${t.offsetSeconds}`;
+    return `      <title ref="${escapeXmlAttr(effect.id)}" name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"${lane} start="0s">
+        <text>
+          <text-style ref="${escapeXmlAttr(styleId)}">${escapeXmlText(t.text)}</text-style>
+        </text>
+        <text-style-def id="${escapeXmlAttr(styleId)}">
+          <text-style font="${escapeXmlAttr(t.textStyle.font)}" fontSize="${t.textStyle.fontSize}" fontColor="${escapeXmlAttr(t.textStyle.fontColor)}" alignment="${escapeXmlAttr(t.textStyle.alignment)}"${t.textStyle.bold ? ' bold="1"' : ""}${t.textStyle.italic ? ' italic="1"' : ""}/>
+        </text-style-def>
+      </title>`;
+  };
+
+  const renderTransition = (t: TransitionSpec) => {
+    const offset = secondsToTime(t.offsetSeconds, rate);
+    const dur = secondsToTime(t.durationSeconds, rate);
+    return `      <transition name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"/>`;
+  };
+
+  const spineItems = spec.spine.map((item) => {
+    if (item.kind === "asset-clip") return renderClip(item);
+    if (item.kind === "title") return renderTitle(item);
+    if (item.kind === "transition") return renderTransition(item);
+    throw new CreatorStudioError(
+      "E_FCPXML_INVALID",
+      `Unknown spine item kind: ${(item as { kind: string }).kind}`,
+    );
+  });
+
+  const spineXml = spineItems.join("\n");
+
+  const resourcesXml = [formatXml, effectsXml, assetsXml]
+    .filter((s) => s.length > 0)
     .join("\n");
+
+  const libraryAttr = spec.libraryLocation
+    ? ` location="${escapeXmlAttr(srcToFileUrl(spec.libraryLocation))}"`
+    : "";
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
 <fcpxml version="${spec.fcpxmlVersion}">
   <resources>
-${formatXml}${assetsXml ? "\n" + assetsXml : ""}
+${resourcesXml}
   </resources>
-  <library>
+  <library${libraryAttr}>
     <event name="${escapeXmlAttr(spec.eventName)}">
       <project name="${escapeXmlAttr(spec.projectName)}">
         <sequence format="${escapeXmlAttr(spec.format.id)}" duration="${sequenceDuration}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">

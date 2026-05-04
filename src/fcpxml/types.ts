@@ -37,6 +37,22 @@ export const AssetSpecSchema = z.object({
 });
 export type AssetSpec = z.infer<typeof AssetSpecSchema>;
 
+export const TextStyleSchema = z.object({
+  font: z.string().default("Helvetica"),
+  fontSize: z.number().int().positive().default(96),
+  fontColor: z
+    .string()
+    .default("1 1 1 1")
+    .describe("RGBA in 0..1 floats, space-separated (e.g. '1 0 0 1' for red)"),
+  alignment: z.enum(["left", "center", "right"]).default("center"),
+  bold: z.boolean().default(false),
+  italic: z.boolean().default(false),
+});
+export type TextStyle = z.infer<typeof TextStyleSchema>;
+
+const CUSTOM_TITLE_UID =
+  ".../Titles.localized/Build In:Out.localized/Custom.localized/Custom.moti";
+
 export const ClipSpecSchema = z.object({
   kind: z.literal("asset-clip"),
   name: z.string(),
@@ -45,6 +61,17 @@ export const ClipSpecSchema = z.object({
   durationSeconds: z.number().positive(),
   startSeconds: z.number().nonnegative().default(0),
   enabled: z.boolean().default(true),
+  volumeDb: z
+    .number()
+    .default(0)
+    .describe(
+      "Audio level adjustment in dB (0 = unchanged, -6 = half loudness, -inf = mute)",
+    ),
+  videoRole: z.string().optional().describe("e.g. 'Video.global', 'B-roll.broll'"),
+  audioRole: z
+    .string()
+    .optional()
+    .describe("e.g. 'Dialogue.dialogue', 'Music.music', 'Effects.effects'"),
 });
 
 export const TitleSpecSchema = z.object({
@@ -53,12 +80,35 @@ export const TitleSpecSchema = z.object({
   text: z.string(),
   offsetSeconds: z.number().nonnegative(),
   durationSeconds: z.number().positive(),
-  lane: z.number().int().default(1),
+  lane: z.number().int().default(1).describe("Track lane; 1 = above primary spine"),
+  effectUid: z
+    .string()
+    .default(CUSTOM_TITLE_UID)
+    .describe("Effect UID for the title generator (default: Apple Custom title)"),
+  effectName: z.string().default("Custom").describe("Display name of the effect"),
+  textStyle: TextStyleSchema.default({
+    font: "Helvetica",
+    fontSize: 96,
+    fontColor: "1 1 1 1",
+    alignment: "center",
+    bold: false,
+    italic: false,
+  }),
 });
+export type TitleSpec = z.infer<typeof TitleSpecSchema>;
+
+export const TransitionSpecSchema = z.object({
+  kind: z.literal("transition"),
+  name: z.string().default("Cross Dissolve"),
+  offsetSeconds: z.number().nonnegative(),
+  durationSeconds: z.number().positive().default(1),
+});
+export type TransitionSpec = z.infer<typeof TransitionSpecSchema>;
 
 export const SpineItemSchema = z.discriminatedUnion("kind", [
   ClipSpecSchema,
   TitleSpecSchema,
+  TransitionSpecSchema,
 ]);
 export type SpineItem = z.infer<typeof SpineItemSchema>;
 
@@ -80,6 +130,12 @@ export const ProjectSpecSchema = z.object({
     resolution: { width: 1920, height: 1080 },
     colorSpace: "1-1-1 (Rec. 709)",
   }),
+  libraryLocation: z
+    .string()
+    .optional()
+    .describe(
+      "Absolute path or file:// URL to a .fcpbundle library. If set, FCP imports into / creates this library, no dialog.",
+    ),
   eventName: z.string().default("Creator Studio OS"),
   projectName: z.string(),
   assets: z.array(AssetSpecSchema).default([]),

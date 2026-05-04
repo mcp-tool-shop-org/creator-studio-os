@@ -8,7 +8,7 @@ MCP control plane for Apple Creator Studio apps.
 
 `creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.14** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
 
-> Status: **v1.1.0 — FCP authoring + Compressor encoding.** macOS only. See [Roadmap](#roadmap) for what's next.
+> Status: **v1.2.0 — FCP authoring (titles, transitions, audio levels, roles, library location) + Compressor encoding.** macOS only. See [Roadmap](#roadmap) for what's next.
 
 ---
 
@@ -78,7 +78,7 @@ creator-studio/
 
 ## Tools
 
-### Final Cut Pro (v1.0.0)
+### Final Cut Pro (v1.0.0 + v1.2.0 authoring breadth)
 
 | Tool | Purpose |
 |------|---------|
@@ -115,9 +115,12 @@ See [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md) for
 
 ### Project spec
 
+`v1.2.0` adds title spine items, transitions, per-clip audio levels, video/audio roles, and an explicit library location:
+
 ```ts
 {
   fcpxmlVersion: "1.14",
+  libraryLocation: "/path/to/Library.fcpbundle",   // optional — skips FCP's "import to which library?" dialog
   format: {
     id: "r1",
     name: "FFVideoFormat1080p2997",
@@ -139,13 +142,27 @@ See [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md) for
     }
   ],
   spine: [
-    { kind: "asset-clip", ref: "a1", name: "Establishing", offsetSeconds: 0, durationSeconds: 5 }
+    {
+      kind: "asset-clip", ref: "a1", name: "Establishing",
+      offsetSeconds: 0, durationSeconds: 5,
+      volumeDb: -3,                       // optional audio level adjustment
+      videoRole: "Video.global",          // optional
+      audioRole: "Music.music"            // optional
+    },
+    {
+      kind: "title", name: "Opening", text: "Hello, world",
+      offsetSeconds: 0, durationSeconds: 3, lane: 1,
+      textStyle: { font: "Helvetica", fontSize: 96, fontColor: "1 1 1 1", alignment: "center", bold: true, italic: false }
+    },
+    { kind: "transition", name: "Cross Dissolve", offsetSeconds: 5, durationSeconds: 1 }
   ],
   markers: [
     { startSeconds: 2.5, durationSeconds: 1, value: "Beat: contact" }
   ]
 }
 ```
+
+See [`docs/reference/effect-uids.md`](./docs/reference/effect-uids.md) for the title effect UID catalog.
 
 The full Zod schema lives in [`src/fcpxml/types.ts`](./src/fcpxml/types.ts).
 
@@ -167,13 +184,13 @@ CI runs on `ubuntu-latest` (typecheck, build, unit tests). Integration tests aga
 
 ## Roadmap
 
-- **v1.1** — Compressor (`compressor_*`) tools — **shipped 2026-05-04**
-- **v1.2** — FCP authoring breadth: titles, transitions, audio levels, roles, explicit library location (per [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md) §v1.1)
+- **v1.1** — Compressor wing — **shipped 2026-05-04**
+- **v1.2** — FCP authoring breadth: titles, transitions, audio levels, roles, library location — **shipped 2026-05-04**
 - **v1.3** — Logic Pro project authoring (Scripter + project XML), Pixelmator Pro batch ops
 - **v1.4** — Motion `.motn` template parameterization, Keynote slide → still export
 - **v2.0** — Cross-app composition protocols (e.g. `protocol.devlog`, `protocol.steam_trailer`)
 
-FCP-specific roadmap: [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md). Cross-app: [`docs/roadmap.md`](./docs/roadmap.md).
+App roadmaps: [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md), [`docs/roadmap-compressor.md`](./docs/roadmap-compressor.md). Cross-app: [`docs/roadmap.md`](./docs/roadmap.md).
 
 ## License
 

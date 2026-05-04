@@ -7,7 +7,7 @@ import { registerCompressorTools } from "./apps/compressor/tools.js";
 async function main() {
   const server = new McpServer({
     name: "creator-studio-os",
-    version: "1.1.0",
+    version: "1.2.0",
   });
 
   registerFcpTools(server);
