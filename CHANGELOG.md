@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-05-04
+
+### Added (Motion OZML mutation — novel capability)
+
+Motion's `.motn` file format is documented by Apple as **OZML 4.0**. The 2026-05-04 research swarm flagged that **no public open-source `.motn` parser/generator exists on GitHub** — programmatic parameter mutation is a genuinely novel MCP capability with zero prior art.
+
+This release ships the safe slice — parameter value mutation only. Text replacement and media swap are deferred (they require coordinated updates across glyph-object elements, styleRuns, audio retime curves, and frame-rate cascades; one wrong byte and Motion silently corrupts the file).
+
+3 new tools backed by `src/apps/motion/ozml.ts`:
+
+- **`motion_template_inspect(path, filterName?, limit?)`** — parse a `.motn` / `.moti` and return OZML version, factory list, and the full parameter list (name, id, flags, value, defaultValue, hasChildren). Supports substring filter on parameter name and result limit.
+- **`motion_template_set_param(path, name, id, value, options)`** — mutate a single parameter's value attribute in place or to a new path. Preserves all other content **byte-for-byte** (whitespace, comments, structure, ordering). When multiple parameters share the same name+id, `matchIndex` disambiguates. Special characters in the new value are XML-escaped.
+- **`motion_template_clone(sourcePath, destinationPath)`** — copy a `.motn` template to a new path before mutating. **Never mutate Apple's bundled originals** in `/Applications/Motion Creator Studio.app/Contents/Resources/`.
+
+### Smoke proof (real Motion template)
+
+Verified end-to-end against Apple's bundled `Snap-Lower Third.motn` (Compositions / Snap / Snap-Lower Third) — 214,592 bytes, OZML 4.0, **16 factories**, **1,983 parameters**:
+
+```
+Mutation:    Size (id=3, matchIndex=0): 74 → 120
+File delta:  +1 byte (exactly the digit-count difference)
+Other Size:  instance preserved (matchIndex disambiguation works)
+```
+
+A +1 byte delta on a 214 KB file is the strongest possible proof of byte-level preservation — only the literal characters `74` were rewritten as `120`; everything else is untouched.
+
+### Internal
+
+- New error codes: `E_OZML_INVALID`, `E_OZML_FILE_MISSING`, `E_OZML_PARAM_NOT_FOUND`.
+- 11 new tests on a tiny synthetic OZML fixture (39 passing total). Coverage: factory parsing, parameter listing, mutation, byte-preservation, matchIndex disambiguation, outputPath non-destructive variant, XML escaping, error paths.
+- Implementation uses targeted attribute regex (not full XML round-trip) to guarantee byte-perfect preservation. The XML round-trip alternative would normalize formatting and risk Motion rejecting the file.
+
+### Updated docs
+
+- `docs/reference/motion-automation.md` — already corrected in the prior commit to credit OZML 4.0 as Apple-documented; this release ships the implementation.
+
+### What's still deferred (per OZML structural risk)
+
+- **Text replacement** — requires updating `<text>`, per-glyph `<object value="ASCII">` elements, per-glyph `<parameter name="Kerning" id="N">` indices, and `<styleRun length="...">` ranges in coordinated lockstep.
+- **Media swap** — requires `<pathURL>`, `<relativeURL>`, `<missingWidth>`, `<missingHeight>`, `<missingDuration>`, `<creationDuration>` (= ceil(duration × frameRate)), `<timing>` in/out points, `<parameter name="Frame Rate">`, `<parameter name="Fixed Width">`, `<parameter name="Fixed Height">`, plus matching audio retime curves.
+
+Both are roadmapped; both require OZML structural awareness beyond regex.
+
 ## [1.4.0] — 2026-05-04
 
 ### Added (Motion)

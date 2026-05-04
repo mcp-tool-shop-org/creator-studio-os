@@ -1,6 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { isMotionRunning, openMotion, openMotionTemplate } from "./app.js";
+import {
+  inspectTemplate,
+  setParam,
+  cloneTemplate,
+} from "./ozml.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -79,6 +84,104 @@ export function registerMotionTools(server: McpServer) {
       try {
         await openMotionTemplate(path);
         return ok({ opened: path });
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_template_inspect",
+    "Parse a Motion .motn / .moti template and return its OZML summary: version, file size, factory count, and the full parameter list (name, id, flags, value). Use this to discover what parameters a template exposes before mutating them.",
+    {
+      path: z.string().describe("Absolute path to a .motn or .moti file"),
+      filterName: z
+        .string()
+        .optional()
+        .describe("Optional substring filter on parameter name (case-sensitive)"),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Maximum number of parameters to return"),
+    },
+    async ({ path, filterName, limit }) => {
+      try {
+        const result = await inspectTemplate(path);
+        let params = result.parameters;
+        if (filterName) {
+          params = params.filter((p) => p.name.includes(filterName));
+        }
+        const totalAfterFilter = params.length;
+        if (limit !== undefined) {
+          params = params.slice(0, limit);
+        }
+        return ok({
+          path: result.path,
+          ozmlVersion: result.ozmlVersion,
+          byteSize: result.byteSize,
+          factoryCount: result.factories.length,
+          parameterCount: result.parameterCount,
+          filteredParameterCount: totalAfterFilter,
+          returnedParameters: params.length,
+          parameters: params,
+        });
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_template_set_param",
+    "Mutate a single parameter's value in a Motion template. Preserves all other content byte-for-byte (whitespace, comments, structure). NEVER call this on a bundled Apple template — clone first via motion_template_clone, then mutate the copy.",
+    {
+      path: z.string().describe("Absolute path to a .motn or .moti file"),
+      name: z.string().describe("Parameter name attribute, e.g. 'Size' or 'Rotation'"),
+      id: z
+        .string()
+        .describe("Parameter id attribute (often a number, but stored as a string in OZML)"),
+      value: z.string().describe("New value (will be XML-escaped if needed)"),
+      outputPath: z
+        .string()
+        .optional()
+        .describe("Where to write the modified file. Default: in-place mutation of `path`."),
+      matchIndex: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe(
+          "If multiple parameters share name+id, choose the Nth match (0-based). Default 0.",
+        ),
+    },
+    async ({ path, name, id, value, outputPath, matchIndex }) => {
+      try {
+        const result = await setParam(path, name, id, value, {
+          outputPath,
+          matchIndex,
+        });
+        return ok(result);
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_template_clone",
+    "Copy a Motion .motn / .moti template to a new path. Use before mutating bundled Apple templates so you never touch the originals in /Applications/Motion Creator Studio.app/Contents/Resources/.",
+    {
+      sourcePath: z.string().describe("Absolute path to source .motn / .moti file"),
+      destinationPath: z
+        .string()
+        .describe("Absolute path for the cloned copy (parent dirs will be created)"),
+    },
+    async ({ sourcePath, destinationPath }) => {
+      try {
+        const result = await cloneTemplate(sourcePath, destinationPath);
+        return ok(result);
       } catch (e) {
         return err(e);
       }

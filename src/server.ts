@@ -13,7 +13,7 @@ import { registerNumbersTools } from "./apps/numbers/tools.js";
 async function main() {
   const server = new McpServer({
     name: "creator-studio-os",
-    version: "1.4.0",
+    version: "1.5.0",
   });
 
   registerFcpTools(server);

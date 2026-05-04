@@ -19,6 +19,9 @@ export type ErrorCode =
   | "E_KEYNOTE_NOT_FOUND"
   | "E_PAGES_NOT_FOUND"
   | "E_NUMBERS_NOT_FOUND"
+  | "E_OZML_INVALID"
+  | "E_OZML_FILE_MISSING"
+  | "E_OZML_PARAM_NOT_FOUND"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {
