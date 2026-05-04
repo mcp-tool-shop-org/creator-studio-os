@@ -14,6 +14,7 @@ export interface EncodeJob {
 
 export interface EncodeResult {
   jobId: string;
+  batchId?: string;
   rawOutput: string;
 }
 
@@ -83,9 +84,11 @@ export async function encodeJob(job: EncodeJob): Promise<EncodeResult> {
       const merged = [cleanOut, cleanErr].filter(Boolean).join("\n");
 
       if (code === 0) {
-        const idMatch = merged.match(/<([0-9A-F-]{36})>/i);
-        const jobId = idMatch ? idMatch[1] : "submitted";
-        resolve({ jobId, rawOutput: merged });
+        const jobMatch = merged.match(/<jobID\s+([0-9A-F-]{36})\s*\/?>/i);
+        const batchMatch = merged.match(/<batchID\s+([0-9A-F-]{36})\s*\/?>/i);
+        const jobId = jobMatch ? jobMatch[1] : "submitted";
+        const batchId = batchMatch ? batchMatch[1] : undefined;
+        resolve({ jobId, batchId, rawOutput: merged });
       } else {
         reject(
           new CreatorStudioError(
