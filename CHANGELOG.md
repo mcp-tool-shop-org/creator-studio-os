@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-05-04
+
+### Added (Pixelmator Pro)
+
+- 11 `pixelmator_*` tools backed by Pixelmator Pro's AppleScript dictionary (`PixelmatorPro.sdef`):
+  - `pixelmator_app_open`, `pixelmator_app_running`
+  - `pixelmator_open` / `pixelmator_close` document lifecycle
+  - `pixelmator_export` — 10 formats: PNG, JPEG, TIFF, HEIC, GIF, JPEG2000, BMP, WebP, SVG, PDF
+  - `pixelmator_resize` — width / height / resolution PPI
+  - `pixelmator_crop` — bounds rect, optional delete-mode
+  - `pixelmator_rotate` — 180 / right / left
+  - `pixelmator_flip` — horizontal / vertical
+  - `pixelmator_batch_export_project_images` — convert every image in `projects/<name>/images/` to a chosen format, optionally resizing, output to `out/`
+  - `pixelmator_batch_export_project_images_dryrun` — preview the batch plan without launching Pixelmator
+- Bundle ID `com.apple.pixelmator` (Apple post-acquisition namespace; v4.2 in Creator Studio bundle).
+
+### Added (Logic Pro)
+
+- 3 `logic_*` tools — intentionally thin because Logic has **no AppleScript dictionary**:
+  - `logic_app_open`, `logic_app_running`
+  - `logic_open` — `.logicx` project file-open handoff via `open -b com.apple.mobilelogic`
+
+### Added (verify + docs)
+
+- `creator-studio-os verify` adds Pixelmator Pro and Logic Pro install checks (11 checks total).
+- `docs/reference/pixelmator-automation.md`, `docs/reference/logic-automation.md`.
+
+### Internal
+
+- Config exposes `pixelmatorAppPath`/`pixelmatorBundleId`, `logicAppPath`/`logicBundleId` with env overrides.
+- New error codes: `E_PIXELMATOR_NOT_FOUND`, `E_PIXELMATOR_FAILED`, `E_LOGIC_NOT_FOUND`.
+- 1 new test (Pixelmator format list); 28 passing total.
+
 ## [1.2.0] — 2026-05-04
 
 ### Added (FCP authoring breadth)

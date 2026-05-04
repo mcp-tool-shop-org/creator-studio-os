@@ -8,7 +8,7 @@ MCP control plane for Apple Creator Studio apps.
 
 `creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.14** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
 
-> Status: **v1.2.0 — FCP authoring (titles, transitions, audio levels, roles, library location) + Compressor encoding.** macOS only. See [Roadmap](#roadmap) for what's next.
+> Status: **v1.3.0 — FCP authoring + Compressor encoding + Pixelmator Pro image ops + Logic Pro file handoff.** macOS only. See [Roadmap](#roadmap) for what's next.
 
 ---
 
@@ -113,6 +113,31 @@ Compressor has no AppleScript dictionary; the surface is the CLI plus `.compress
 
 See [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md) for the verified CLI form and where settings live.
 
+### Pixelmator Pro (v1.3.0)
+
+| Tool | Purpose |
+|------|---------|
+| `pixelmator_app_open` / `pixelmator_app_running` | Lifecycle |
+| `pixelmator_open` / `pixelmator_close` | Open / close a document |
+| `pixelmator_export` | Export to PNG / JPEG / TIFF / HEIC / GIF / JPEG2000 / BMP / WebP / SVG / PDF |
+| `pixelmator_resize` | Resize image (width / height / resolution PPI) |
+| `pixelmator_crop` | Crop to bounds rect |
+| `pixelmator_rotate` | Rotate 180 / right / left |
+| `pixelmator_flip` | Flip horizontal / vertical |
+| `pixelmator_batch_export_project_images` | Convert every image in `projects/<name>/images/` to a target format, optionally resizing |
+| `pixelmator_batch_export_project_images_dryrun` | Preview the batch plan without launching Pixelmator |
+
+See [`docs/reference/pixelmator-automation.md`](./docs/reference/pixelmator-automation.md).
+
+### Logic Pro (v1.3.0)
+
+Logic has **no AppleScript dictionary**. Surface is intentionally thin: lifecycle + file-open handoff for `.logicx` projects. See [`docs/reference/logic-automation.md`](./docs/reference/logic-automation.md).
+
+| Tool | Purpose |
+|------|---------|
+| `logic_app_open` / `logic_app_running` | Lifecycle |
+| `logic_open` | Open a `.logicx` project (Logic launches and opens it) |
+
 ### Project spec
 
 `v1.2.0` adds title spine items, transitions, per-clip audio levels, video/audio roles, and an explicit library location:
@@ -185,8 +210,8 @@ CI runs on `ubuntu-latest` (typecheck, build, unit tests). Integration tests aga
 ## Roadmap
 
 - **v1.1** — Compressor wing — **shipped 2026-05-04**
-- **v1.2** — FCP authoring breadth: titles, transitions, audio levels, roles, library location — **shipped 2026-05-04**
-- **v1.3** — Logic Pro project authoring (Scripter + project XML), Pixelmator Pro batch ops
+- **v1.2** — FCP authoring breadth (titles, transitions, audio levels, roles, library location) — **shipped 2026-05-04**
+- **v1.3** — Pixelmator Pro AppleScript wing + Logic Pro file handoff — **shipped 2026-05-04**
 - **v1.4** — Motion `.motn` template parameterization, Keynote slide → still export
 - **v2.0** — Cross-app composition protocols (e.g. `protocol.devlog`, `protocol.steam_trailer`)
 
