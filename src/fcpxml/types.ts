@@ -72,7 +72,7 @@ export const MarkerSpecSchema = z.object({
 export type MarkerSpec = z.infer<typeof MarkerSpecSchema>;
 
 export const ProjectSpecSchema = z.object({
-  fcpxmlVersion: z.literal("1.13").default("1.13"),
+  fcpxmlVersion: z.enum(["1.13", "1.14"]).default("1.14"),
   format: FormatSpecSchema.default({
     id: "r1",
     name: "FFVideoFormat1080p2997",

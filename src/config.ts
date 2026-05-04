@@ -22,7 +22,7 @@ export function loadConfig(): Config {
     fcpBundleId: "com.apple.FinalCutApp",
     fcpDtdPath:
       process.env.CREATOR_STUDIO_FCP_DTD ??
-      "/Applications/Final Cut Pro Creator Studio.app/Contents/Frameworks/Interchange.framework/Versions/A/Resources/FCPXMLv1_13.dtd",
+      "/Applications/Final Cut Pro Creator Studio.app/Contents/Frameworks/Interchange.framework/Versions/A/Resources/FCPXMLv1_14.dtd",
   };
 }
 

@@ -10,7 +10,7 @@ describe("buildProjectFcpxml", () => {
     });
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
     expect(xml).toContain("<!DOCTYPE fcpxml>");
-    expect(xml).toContain('<fcpxml version="1.13">');
+    expect(xml).toContain('<fcpxml version="1.14">');
     expect(xml).toContain('<event name="E">');
     expect(xml).toContain('<project name="P">');
     expect(xml).toContain("<spine>");

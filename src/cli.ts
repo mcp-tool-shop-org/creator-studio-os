@@ -18,7 +18,7 @@ Commands:
 Environment:
   CREATOR_STUDIO_DATA_DIR    Override data directory (default: /Volumes/T9-Shared/AI/creator-studio)
   CREATOR_STUDIO_FCP_PATH    Override Final Cut Pro app path
-  CREATOR_STUDIO_FCP_DTD     Override FCPXML 1.13 DTD path
+  CREATOR_STUDIO_FCP_DTD     Override FCPXML DTD path (default: 1.14, falls back to 1.13)
 
 Threat model:
   Runs AppleScript on the user's machine and writes files to CREATOR_STUDIO_DATA_DIR.

@@ -88,6 +88,7 @@ export async function verify(): Promise<{
   if (fcpInstalled && dtd) {
     try {
       const built = buildProjectFcpxml({
+        fcpxmlVersion: "1.14",
         eventName: "Verify Event",
         projectName: "Verify Project",
         format: {

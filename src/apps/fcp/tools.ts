@@ -121,7 +121,7 @@ export function registerFcpTools(server: McpServer) {
 
   server.tool(
     "fcp_fcpxml_build",
-    "Build an FCPXML 1.13 document from a JSON project spec. Returns the XML string without writing it.",
+    "Build an FCPXML 1.14 document (1.13 also supported) from a JSON project spec. Returns the XML string without writing it.",
     {
       spec: z.unknown().describe("ProjectSpec — see schema in repo docs"),
     },
@@ -137,7 +137,7 @@ export function registerFcpTools(server: McpServer) {
 
   server.tool(
     "fcp_fcpxml_validate",
-    "Validate an FCPXML document against the bundled FCPXMLv1_13.dtd (requires xmllint). Returns valid=true/false and validator output.",
+    "Validate an FCPXML document against the bundled FCPXMLv1_14.dtd (requires xmllint). Returns valid=true/false and validator output.",
     { xml: z.string() },
     async ({ xml }) => {
       try {

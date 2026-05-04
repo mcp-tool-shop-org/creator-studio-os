@@ -2,7 +2,7 @@
 
 MCP control plane for Apple Creator Studio apps.
 
-`creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.13** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
+`creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.14** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
 
 > Status: **v1.0.0 — FCP authoring (write via FCPXML, read via AppleScript).** macOS only. See [Roadmap](#roadmap) for the plan beyond v1.0.
 
@@ -10,7 +10,7 @@ MCP control plane for Apple Creator Studio apps.
 
 ## Why this exists
 
-Final Cut Pro's AppleScript dictionary is **read-only** (you can list libraries / events / projects and read sequence metadata, but you cannot create or modify timelines via AppleScript). The supported authoring path is **FCPXML import**: write a well-formed FCPXML 1.13 document, hand it to FCP, FCP creates the project for you.
+Final Cut Pro's AppleScript dictionary is **read-only** (you can list libraries / events / projects and read sequence metadata, but you cannot create or modify timelines via AppleScript). The supported authoring path is **FCPXML import**: write a well-formed FCPXML 1.14 document (or 1.13 — both bundled), hand it to FCP, FCP creates the project for you.
 
 `creator-studio-os` is the bridge: it lets Claude author timelines as JSON specs, builds + validates FCPXML, and triggers the import — so the model can compose cuts, drop in footage, and place markers without touching FCP's UI.
 
@@ -45,7 +45,7 @@ Or via the published binary directly:
 creator-studio-os verify
 ```
 
-Checks platform, `osascript`, `xmllint`, Final Cut Pro install, FCPXML 1.13 DTD, data directory, and runs an FCPXML round-trip through the bundled DTD.
+Checks platform, `osascript`, `xmllint`, Final Cut Pro install, FCPXML 1.14 DTD, data directory, and runs an FCPXML round-trip through the bundled DTD.
 
 A first run also creates the data directory layout if it's missing.
 
@@ -79,7 +79,7 @@ creator-studio/
 | `fcp_project_list` | List projects in the data directory |
 | `fcp_project_create` | Create a project directory + `project.json` |
 | `fcp_project_info` | Read project metadata + resolved paths |
-| `fcp_fcpxml_build` | Build FCPXML 1.13 from a JSON spec (no I/O) |
+| `fcp_fcpxml_build` | Build FCPXML 1.14 from a JSON spec (no I/O) |
 | `fcp_fcpxml_validate` | Validate FCPXML against the bundled DTD (uses `xmllint`) |
 | `fcp_fcpxml_write` | Write FCPXML to `projects/<name>/fcp/` |
 | `fcp_fcpxml_import` | Open an FCPXML file in Final Cut Pro |
@@ -96,7 +96,7 @@ creator-studio/
 
 ```ts
 {
-  fcpxmlVersion: "1.13",
+  fcpxmlVersion: "1.14",
   format: {
     id: "r1",
     name: "FFVideoFormat1080p2997",

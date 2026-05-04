@@ -99,7 +99,7 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
-<fcpxml version="1.13">
+<fcpxml version="${spec.fcpxmlVersion}">
   <resources>
 ${formatXml}${assetsXml ? "\n" + assetsXml : ""}
   </resources>
