@@ -17,6 +17,14 @@ export interface Config {
   pixelmatorBundleId: string;
   logicAppPath: string;
   logicBundleId: string;
+  motionAppPath: string;
+  motionBundleId: string;
+  keynoteAppPath: string;
+  keynoteBundleId: string;
+  pagesAppPath: string;
+  pagesBundleId: string;
+  numbersAppPath: string;
+  numbersBundleId: string;
 }
 
 export function loadConfig(): Config {
@@ -51,6 +59,22 @@ export function loadConfig(): Config {
       process.env.CREATOR_STUDIO_LOGIC_PATH ??
       "/Applications/Logic Pro Creator Studio.app",
     logicBundleId: "com.apple.mobilelogic",
+    motionAppPath:
+      process.env.CREATOR_STUDIO_MOTION_PATH ??
+      "/Applications/Motion Creator Studio.app",
+    motionBundleId: "com.apple.motionappApp",
+    keynoteAppPath:
+      process.env.CREATOR_STUDIO_KEYNOTE_PATH ??
+      "/Applications/Keynote Creator Studio.app",
+    keynoteBundleId: "com.apple.Keynote",
+    pagesAppPath:
+      process.env.CREATOR_STUDIO_PAGES_PATH ??
+      "/Applications/Pages Creator Studio.app",
+    pagesBundleId: "com.apple.Pages",
+    numbersAppPath:
+      process.env.CREATOR_STUDIO_NUMBERS_PATH ??
+      "/Applications/Numbers Creator Studio.app",
+    numbersBundleId: "com.apple.Numbers",
   };
 }
 

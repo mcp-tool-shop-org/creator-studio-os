@@ -8,7 +8,7 @@ MCP control plane for Apple Creator Studio apps.
 
 `creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.14** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
 
-> Status: **v1.3.0 — FCP authoring + Compressor encoding + Pixelmator Pro image ops + Logic Pro file handoff.** macOS only. See [Roadmap](#roadmap) for what's next.
+> Status: **v1.4.0 — All 8 Apple Creator Studio apps wired.** FCP authoring + Compressor encoding + Pixelmator image ops + Logic / Motion file handoff + Keynote / Pages / Numbers export. macOS only. See [Roadmap](#roadmap).
 
 ---
 
@@ -138,6 +138,25 @@ Logic has **no AppleScript dictionary**. Surface is intentionally thin: lifecycl
 | `logic_app_open` / `logic_app_running` | Lifecycle |
 | `logic_open` | Open a `.logicx` project (Logic launches and opens it) |
 
+### Motion (v1.4.0)
+
+Motion has **no AppleScript dictionary** (same posture as Logic). Surface is thin: lifecycle + `.motn` open. The real value is "human builds Motion title templates with published parameters; FCPXML authors use of those templates." See [`docs/reference/motion-automation.md`](./docs/reference/motion-automation.md).
+
+| Tool | Purpose |
+|------|---------|
+| `motion_app_open` / `motion_app_running` | Lifecycle |
+| `motion_open` | Open a `.motn` template / project |
+
+### Keynote / Pages / Numbers (v1.4.0)
+
+All three iWork apps share a near-identical AppleScript shape (open / close / export). Document-name extension-stripping quirk applies (same as Pixelmator). See [`docs/reference/iwork-automation.md`](./docs/reference/iwork-automation.md) for full export-format catalog.
+
+**Keynote (8 tools):** `keynote_app_open`, `keynote_app_running`, `keynote_open`, `keynote_close`, `keynote_export_pdf`, `keynote_export_images` (PNG / JPEG / TIFF), `keynote_export_movie` (QuickTime), `keynote_export_pptx`.
+
+**Pages (5 tools):** `pages_app_open`, `pages_app_running`, `pages_open`, `pages_close`, `pages_export` (PDF / Word / RTF / unformatted text / EPUB).
+
+**Numbers (5 tools):** `numbers_app_open`, `numbers_app_running`, `numbers_open`, `numbers_close`, `numbers_export` (PDF / Excel / CSV).
+
 ### Project spec
 
 `v1.2.0` adds title spine items, transitions, per-clip audio levels, video/audio roles, and an explicit library location:
@@ -212,6 +231,7 @@ CI runs on `ubuntu-latest` (typecheck, build, unit tests). Integration tests aga
 - **v1.1** — Compressor wing — **shipped 2026-05-04**
 - **v1.2** — FCP authoring breadth (titles, transitions, audio levels, roles, library location) — **shipped 2026-05-04**
 - **v1.3** — Pixelmator Pro AppleScript wing + Logic Pro file handoff — **shipped 2026-05-04**
+- **v1.4** — Motion file handoff + Keynote / Pages / Numbers export wings — **shipped 2026-05-04**
 - **v1.4** — Motion `.motn` template parameterization, Keynote slide → still export
 - **v2.0** — Cross-app composition protocols (e.g. `protocol.devlog`, `protocol.steam_trailer`)
 

@@ -15,6 +15,10 @@ export type ErrorCode =
   | "E_PIXELMATOR_NOT_FOUND"
   | "E_PIXELMATOR_FAILED"
   | "E_LOGIC_NOT_FOUND"
+  | "E_MOTION_NOT_FOUND"
+  | "E_KEYNOTE_NOT_FOUND"
+  | "E_PAGES_NOT_FOUND"
+  | "E_NUMBERS_NOT_FOUND"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {

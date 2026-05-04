@@ -107,6 +107,42 @@ export async function verify(): Promise<{
       : `missing: ${cfg.logicAppPath} (Logic wing won't function)`,
   });
 
+  const motionInstalled = await exists(cfg.motionAppPath);
+  checks.push({
+    name: "motion",
+    ok: motionInstalled,
+    detail: motionInstalled
+      ? cfg.motionAppPath
+      : `missing: ${cfg.motionAppPath} (Motion wing won't function)`,
+  });
+
+  const keynoteInstalled = await exists(cfg.keynoteAppPath);
+  checks.push({
+    name: "keynote",
+    ok: keynoteInstalled,
+    detail: keynoteInstalled
+      ? cfg.keynoteAppPath
+      : `missing: ${cfg.keynoteAppPath} (Keynote wing won't function)`,
+  });
+
+  const pagesInstalled = await exists(cfg.pagesAppPath);
+  checks.push({
+    name: "pages",
+    ok: pagesInstalled,
+    detail: pagesInstalled
+      ? cfg.pagesAppPath
+      : `missing: ${cfg.pagesAppPath} (Pages wing won't function)`,
+  });
+
+  const numbersInstalled = await exists(cfg.numbersAppPath);
+  checks.push({
+    name: "numbers",
+    ok: numbersInstalled,
+    detail: numbersInstalled
+      ? cfg.numbersAppPath
+      : `missing: ${cfg.numbersAppPath} (Numbers wing won't function)`,
+  });
+
   const dataDir = await exists(cfg.dataDir);
   if (!dataDir) {
     await mkdir(join(cfg.dataDir, "projects"), { recursive: true });

@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-05-04
+
+### Added (Motion)
+
+- 3 `motion_*` tools — Motion has no `.sdef` (verified), so surface is intentionally thin:
+  - `motion_app_open`, `motion_app_running`
+  - `motion_open` — `.motn` file-open handoff
+- `docs/reference/motion-automation.md` documents the empty surface and Motion's role in cross-app composition (human authors templates with published parameters; FCPXML uses them).
+
+### Added (Keynote)
+
+- 8 `keynote_*` tools backed by `Keynote.sdef`:
+  - `keynote_app_open`, `keynote_app_running`
+  - `keynote_open`, `keynote_close`
+  - `keynote_export_pdf`, `keynote_export_pptx`
+  - `keynote_export_movie` (QuickTime)
+  - `keynote_export_images` — slide images as PNG / JPEG / TIFF (configurable via `imageFormat`)
+
+### Added (Pages)
+
+- 5 `pages_*` tools backed by `Pages.sdef`:
+  - `pages_app_open`, `pages_app_running`
+  - `pages_open`, `pages_close`
+  - `pages_export` — PDF / Microsoft Word / RTF / unformatted text / EPUB
+
+### Added (Numbers)
+
+- 5 `numbers_*` tools backed by `Numbers.sdef`:
+  - `numbers_app_open`, `numbers_app_running`
+  - `numbers_open`, `numbers_close`
+  - `numbers_export` — PDF / Microsoft Excel / CSV
+
+### Internal
+
+- New `src/apps/iwork/shared.ts` — shared `activateApp` / `openDocumentInApp` / `closeDocumentInApp` / `exportDocumentInApp` helpers used by Keynote / Pages / Numbers (their AppleScript shape is identical except for the bundle ID and format enum).
+- Config now exposes `motionAppPath`/`motionBundleId`, `keynoteAppPath`/`keynoteBundleId`, `pagesAppPath`/`pagesBundleId`, `numbersAppPath`/`numbersBundleId` with env overrides.
+- New error codes: `E_MOTION_NOT_FOUND`, `E_KEYNOTE_NOT_FOUND`, `E_PAGES_NOT_FOUND`, `E_NUMBERS_NOT_FOUND`.
+- `verify` now checks all 8 Creator Studio apps' install paths (15 checks total).
+
+### Docs
+
+- `docs/reference/iwork-automation.md` documents the shared iWork pattern + per-app export format enums.
+- `docs/reference/motion-automation.md` documents Motion's empty automation surface.
+- `docs/roadmap-pixelmator.md`, `docs/roadmap-logic.md` — separately committed.
+
+### Coverage
+
+All 8 Apple Creator Studio apps now wired:
+
+| App | Tools | Surface |
+|-----|-------|---------|
+| Final Cut Pro | 15 | FCPXML 1.14 author + AppleScript read |
+| Compressor | 6 | CLI encode + discovery |
+| Pixelmator Pro | 11 | AppleScript: open / close / export 10 fmts / resize / crop / rotate / flip / batch |
+| Logic Pro | 3 | File handoff (no sdef) |
+| Motion | 3 | File handoff (no sdef) |
+| Keynote | 8 | AppleScript: open / close / export PDF / images / movie / PPTX |
+| Pages | 5 | AppleScript: open / close / export 5 formats |
+| Numbers | 5 | AppleScript: open / close / export PDF / Excel / CSV |
+| **Total** | **56** | |
+
 ## [1.3.0] — 2026-05-04
 
 ### Added (Pixelmator Pro)
