@@ -13,6 +13,10 @@ export interface Config {
   compressorBundleId: string;
   compressorBinaryPath: string;
   compressorBundledSettingsDir: string;
+  pixelmatorAppPath: string;
+  pixelmatorBundleId: string;
+  logicAppPath: string;
+  logicBundleId: string;
 }
 
 export function loadConfig(): Config {
@@ -39,6 +43,14 @@ export function loadConfig(): Config {
     compressorBundledSettingsDir:
       process.env.CREATOR_STUDIO_COMPRESSOR_BUNDLED_SETTINGS ??
       `${compressorAppPath}/Contents/PlugIns/Compressor/CompressorKit.bundle/Contents/Frameworks/Compressor.framework/Versions/A/Frameworks/CompressorKit.framework/Versions/A/Resources/Settings`,
+    pixelmatorAppPath:
+      process.env.CREATOR_STUDIO_PIXELMATOR_PATH ??
+      "/Applications/Pixelmator Pro Creator Studio.app",
+    pixelmatorBundleId: "com.apple.pixelmator",
+    logicAppPath:
+      process.env.CREATOR_STUDIO_LOGIC_PATH ??
+      "/Applications/Logic Pro Creator Studio.app",
+    logicBundleId: "com.apple.mobilelogic",
   };
 }
 

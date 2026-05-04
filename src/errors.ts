@@ -12,6 +12,9 @@ export type ErrorCode =
   | "E_COMPRESSOR_FAILED"
   | "E_JOB_NOT_FOUND"
   | "E_SETTING_NOT_FOUND"
+  | "E_PIXELMATOR_NOT_FOUND"
+  | "E_PIXELMATOR_FAILED"
+  | "E_LOGIC_NOT_FOUND"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {

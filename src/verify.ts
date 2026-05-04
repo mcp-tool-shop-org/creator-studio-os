@@ -89,6 +89,24 @@ export async function verify(): Promise<{
     detail: compressorBin ? cfg.compressorBinaryPath : "binary not found",
   });
 
+  const pixelmatorInstalled = await exists(cfg.pixelmatorAppPath);
+  checks.push({
+    name: "pixelmator-pro",
+    ok: pixelmatorInstalled,
+    detail: pixelmatorInstalled
+      ? cfg.pixelmatorAppPath
+      : `missing: ${cfg.pixelmatorAppPath} (Pixelmator wing won't function)`,
+  });
+
+  const logicInstalled = await exists(cfg.logicAppPath);
+  checks.push({
+    name: "logic-pro",
+    ok: logicInstalled,
+    detail: logicInstalled
+      ? cfg.logicAppPath
+      : `missing: ${cfg.logicAppPath} (Logic wing won't function)`,
+  });
+
   const dataDir = await exists(cfg.dataDir);
   if (!dataDir) {
     await mkdir(join(cfg.dataDir, "projects"), { recursive: true });
