@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="500">
+</p>
+
 # creator-studio-os
 
 MCP control plane for Apple Creator Studio apps.
