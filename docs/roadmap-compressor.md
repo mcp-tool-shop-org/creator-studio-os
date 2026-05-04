@@ -15,6 +15,17 @@ The plan for `compressor_*` tooling. Lives separately from the FCP roadmap becau
 - Real `jobID` + `batchID` parsed out of submission output
 - 6 tests; smoke-proven end-to-end against Compressor 5.2 (HEVC HD encode of a 5s clip)
 
+## Priority order from 2026-05-04 research swarm
+
+The next concrete adds, in dependency order:
+
+1. **`compressor_settings_inspect`** — `plutil -convert xml1` + parse for `Name` / `NameKey`. Doubles as `.compressorbatch` schema-reverse prep for v1.3.
+2. **5.2 codec-availability filter** on `compressor_settings_list` — flag presets the host's Compressor will refuse (Blu-ray H.264, Dolby Digital, AVC-Intra-on-Apple-Silicon — silently removed in 5.2). One-shot static list keyed off Compressor version.
+3. **`compressor_status` via cluster storage poll** — `~/Library/Application Support/Compressor/Storage/<UUID>/jobs/` ([discussions.apple.com 5889264](https://discussions.apple.com/thread/5889264)). Pair with `compressor_wait_for_output` as documented fallback.
+4. **`compressor_watch_create` (v1.4)** must include "stable size" pre-flight — Compressor's own watch folder submits partial files for sources >~1min copy time ([macscripter](https://www.macscripter.net/t/watch-folder-for-compressor-droplet-problems/45969)). Poll until file size unchanged for N seconds before submitting.
+5. **Defer `.compressorbatch` authoring (v1.3) until v1.2 lands** — XML parsing infrastructure for read is reusable for write.
+6. **Skip distributed processing (v1.5)** until Mike has a multi-Mac render farm.
+
 ## v1.2 — Human-readable preset names + status
 
 **Apple's bundled presets ship with technical filenames** (`BroadbandHDHEVCNameKey.compressorsetting`, `EFBComputer_HEVC10.compressorsetting`). The user-facing display name lives inside the `.compressorsetting` XML as a `Name` property (or via macOS NameKey resolution against a localized strings table inside the framework). Without this, `compressor_settings_list` is functional but unfriendly.

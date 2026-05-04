@@ -21,6 +21,17 @@ We unlock new milestones on any of these external events:
 
 Until one of those, v1.3 is the ceiling for `logic_*`.
 
+## Concrete next adds (per 2026-05-04 research swarm)
+
+The swarm confirmed: **don't follow the keystroke-MCP route** that `koltyj/logic-pro-mcp` and `che-logic-pro-mcp` take. Lean into what fits creator-studio-os's "operator's workbench" position. In priority order:
+
+1. **`logic_project_inspect`** — read-only `.logicx` plist parsing. Read `Alternatives/*/Metadata/`, `ProjectInformation`, sample-rate / tempo / length / track count / plugin manifest. **Skip the `ProjectData` binary** (undocumented, version-volatile, EULA-adjacent). ~80% of "what's in this session" answers without reversing anything.
+2. **`logic_watch_bounces`** — fsevents on a configured bounce-output directory; emit MCP events when a bounce lands so downstream Compressor / FCP automation chains kick in. This is the Motif-cue-auditioning loop Mike actually does.
+3. **`logic_sidecar_write`** — write a sibling `.json` next to a `.logicx` (cue name, scene tag, motif family, take notes). Pairs with Motif's score-map; lets human-driven Logic sessions leave structured breadcrumbs for the rest of csos.
+4. **`logic_iac_send`** — thin wrapper over CoreMIDI virtual port + IAC bus to send transport (MMC) and notes / CC. Same surface as [sandst1/mcp-server-midi](https://github.com/sandst1/mcp-server-midi) but scoped tightly so we don't pretend it's "control."
+
+The valuable adds are **around** Logic, not **into** it.
+
 ## What we do NOT plan to ship
 
 - Direct `.logicx` package mutation. Apple changes the format silently across point releases; reverse-engineered code rots fast.

@@ -61,6 +61,15 @@ FCP exposes no AppleScript `share` command. Three viable paths, in order of clea
 
 Path #1 is the right answer. This milestone lands once both FCP and Compressor wings are mature.
 
+## Priority recommendations from 2026-05-04 research swarm
+
+Worth interleaving into v1.2-v1.5 work as cheap interop wins:
+
+- **`fcp_validate_compound_safety`** — pre-flight tool that flags whether a `ProjectSpec` contains compounds that won't survive round-trip ([Blackmagic forum on compound multiplication](https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=40534)). Ship before v1.2 compound authoring so users don't ship lossy edits unaware.
+- **Bundle a 1.13 fallback profile** — `targetVersion: "1.13" | "1.14"` field on the builder. [DareDev256/fcpxml-mcp-server](https://github.com/DareDev256/fcpxml-mcp-server) caps at 1.11; OTIO + Pipeline-Neo + Resolve consumers commonly want 1.13. Schema diff is small, cost near-zero.
+- **OTIO export adapter** — when v1.4 parser lands, expose `fcp_export_otio` via [`otio-fcpx-xml-lite-adapter`](https://pypi.org/project/otio-fcpx-xml-lite-adapter/). Positions us as the only MCP that reads FCP and writes to Resolve / Premiere paths cleanly.
+- **`fcp_audit_roles`** — given dotted role serialization (`"dialogue.Mix"` rather than nested), a tool that walks the spine and reports role coverage / orphans is one-day work. High signal for anyone wiring Logic stems back into FCP.
+
 ## v1.6 — Generators and backgrounds
 
 - `generator` references (color generators, gradient backgrounds, looping backgrounds for vertical / square aspects)

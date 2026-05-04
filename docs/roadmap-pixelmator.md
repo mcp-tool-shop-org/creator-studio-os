@@ -10,6 +10,17 @@ Plan for the `pixelmator_*` wing. Pixelmator has the richest AppleScript surface
 - Smoke-proven end-to-end against Pixelmator Pro 4.2 (Creator Studio): open 2560x1440 PNG → resize to 1920x1080 → export as WebP
 - Caught + documented the **extension-stripping quirk** (Pixelmator names a document by stem, not by filename)
 
+## Priority adds from 2026-05-04 research swarm
+
+Beyond the staged v1.4-v1.7 plan below, the swarm surfaced these high-leverage adds:
+
+1. **`pixelmator_run_shortcut`** — bridge to Shortcuts.app via `shortcuts run "<name>"` CLI. Picks up Apple-only ML knobs (portrait background removal, image upscale, color match) the sdef alone doesn't expose. The 28 Pixelmator Shortcuts actions are partially Shortcuts-only.
+2. **`pixelmator_apply_ml`** — typed surface for the ML algorithm enum (`ml super resolution`, `ml enhance`, `ml denoise`, `ml match colors`, `ml crop`, `ml remove background`). Already partially reachable via existing `resize` / effect verbs with an algorithm parameter; worth a dedicated surface for discoverability.
+3. **`pixelmator_replace_text`** + **`pixelmator_replace_layer`** — sdef-native commands we don't expose yet. Massive value for game-asset templating (Star Freight UI mock variants, Saint's Mile chapter cards).
+4. **`pixelmator_detect`** — face / QR / barcode detection. Already in the sdef, low effort, surfaces ML data extraction (sprite-sheet metadata).
+5. **Sdef-diff harness** — scripted `sdef /Applications/Pixelmator\ Pro.app` snapshot per release into `docs/reference/sdef-snapshots/` + diff report on each Pixelmator update. Catches the next undocumented Apple change automatically.
+6. **Port the [Late Night Software AppleScript library](https://forum.latenightsw.com/t/i-made-a-pixelmator-pro-library/2712) blend-mode enum** — 27+ blend modes, Apple-blessed reference. `pixelmator_set_layer_style` v1 = blend modes + shadows / strokes / fills.
+
 ## v1.4 — Layer authoring + text
 
 Pixelmator is most useful for canon-bound work when it can author from scratch, not just transform existing assets.
