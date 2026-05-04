@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-05-04
+
+### Added
+
+- Compressor wing: 6 new tools.
+  - `compressor_app_open` — launch Compressor (idempotent; primes App Store entitlement validation).
+  - `compressor_app_running` — System Events query.
+  - `compressor_settings_list` — enumerate `.compressorsetting` presets from user + system dirs; `includeBundled=true` adds Apple's bundled presets.
+  - `compressor_locations_list` — enumerate `.compressorlocation` files.
+  - `compressor_encode` — submit a single encode via the CLI form (`Compressor -jobpath … -settingpath … -locationpath …`).
+  - `compressor_encode_project` — convenience wrapper that resolves source / output paths inside a project directory.
+- `creator-studio-os verify` now also checks Compressor app + binary presence.
+- `docs/reference/compressor-cli.md` updated with the verified CLI form, settings/location paths, and the entitlement-validation behavior.
+- `docs/roadmap-fcp.md` — FCP-specific roadmap (titles, transitions, audio levels, roles, library location, anchored clips, multicam, parser, render path, generators).
+- 6 new tests; 22 passing total.
+
+### Internal
+
+- Added Compressor binary, bundle ID, and bundled-settings paths to `loadConfig()` (overridable via `CREATOR_STUDIO_COMPRESSOR_PATH`, `CREATOR_STUDIO_COMPRESSOR_BIN`, `CREATOR_STUDIO_COMPRESSOR_BUNDLED_SETTINGS`).
+- Added error codes: `E_COMPRESSOR_NOT_FOUND`, `E_COMPRESSOR_FAILED`, `E_JOB_NOT_FOUND`, `E_SETTING_NOT_FOUND`.
+- Compressor CLI runner strips the wall of objc class-collision warnings macOS prints on every invocation.
+
 ## [1.0.0] — 2026-05-04
 
 ### Added

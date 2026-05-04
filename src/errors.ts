@@ -8,6 +8,10 @@ export type ErrorCode =
   | "E_FCPXML_VALIDATION_UNAVAILABLE"
   | "E_DATA_DIR_MISSING"
   | "E_AUTOMATION_DENIED"
+  | "E_COMPRESSOR_NOT_FOUND"
+  | "E_COMPRESSOR_FAILED"
+  | "E_JOB_NOT_FOUND"
+  | "E_SETTING_NOT_FOUND"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {

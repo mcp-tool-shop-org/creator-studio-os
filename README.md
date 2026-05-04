@@ -4,7 +4,7 @@ MCP control plane for Apple Creator Studio apps.
 
 `creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.14** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
 
-> Status: **v1.0.0 — FCP authoring (write via FCPXML, read via AppleScript).** macOS only. See [Roadmap](#roadmap) for the plan beyond v1.0.
+> Status: **v1.1.0 — FCP authoring + Compressor encoding.** macOS only. See [Roadmap](#roadmap) for what's next.
 
 ---
 
@@ -72,7 +72,9 @@ creator-studio/
 
 `project.json` is the contract — every tool that touches a project reads it first.
 
-## Tools (v1.0.0)
+## Tools
+
+### Final Cut Pro (v1.0.0)
 
 | Tool | Purpose |
 |------|---------|
@@ -91,6 +93,21 @@ creator-studio/
 | `fcp_app_open` | Activate Final Cut Pro |
 | `fcp_app_activate` | Bring FCP to the front |
 | `fcp_app_running` | Is FCP running |
+
+### Compressor (v1.1.0)
+
+Compressor has no AppleScript dictionary; the surface is the CLI plus `.compressorbatch` files. First CLI invocation after install triggers App Store entitlement validation (the `Validating Purchase...` line), so the recommended startup sequence is `compressor_app_open` once per session, then submit jobs.
+
+| Tool | Purpose |
+|------|---------|
+| `compressor_app_open` | Launch Compressor (primes entitlement) |
+| `compressor_app_running` | Is Compressor running |
+| `compressor_settings_list` | Enumerate `.compressorsetting` presets (user + system; pass `includeBundled=true` for Apple's bundled presets) |
+| `compressor_locations_list` | Enumerate `.compressorlocation` files |
+| `compressor_encode` | Submit a single encode (CLI form: jobpath + settingpath + locationpath) |
+| `compressor_encode_project` | Same as `compressor_encode` but resolves source / output relative to a project's directory |
+
+See [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md) for the verified CLI form and where settings live.
 
 ### Project spec
 
@@ -146,12 +163,13 @@ CI runs on `ubuntu-latest` (typecheck, build, unit tests). Integration tests aga
 
 ## Roadmap
 
-- **v1.1** — Compressor (`compressor_*`) tools, title spine items, transitions, audio levels
-- **v1.2** — Logic Pro project authoring (Scripter + project XML), Pixelmator Pro batch ops
-- **v1.3** — Motion `.motn` template parameterization, Keynote slide → still export
+- **v1.1** — Compressor (`compressor_*`) tools — **shipped 2026-05-04**
+- **v1.2** — FCP authoring breadth: titles, transitions, audio levels, roles, explicit library location (per [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md) §v1.1)
+- **v1.3** — Logic Pro project authoring (Scripter + project XML), Pixelmator Pro batch ops
+- **v1.4** — Motion `.motn` template parameterization, Keynote slide → still export
 - **v2.0** — Cross-app composition protocols (e.g. `protocol.devlog`, `protocol.steam_trailer`)
 
-See [`docs/roadmap.md`](./docs/roadmap.md) for detail.
+FCP-specific roadmap: [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md). Cross-app: [`docs/roadmap.md`](./docs/roadmap.md).
 
 ## License
 
