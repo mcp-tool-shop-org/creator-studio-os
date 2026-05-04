@@ -9,10 +9,18 @@ export interface Config {
   fcpAppPath: string;
   fcpBundleId: string;
   fcpDtdPath: string;
+  compressorAppPath: string;
+  compressorBundleId: string;
+  compressorBinaryPath: string;
+  compressorBundledSettingsDir: string;
 }
 
 export function loadConfig(): Config {
   const dataDir = process.env.CREATOR_STUDIO_DATA_DIR ?? DEFAULT_DATA_DIR;
+
+  const compressorAppPath =
+    process.env.CREATOR_STUDIO_COMPRESSOR_PATH ??
+    "/Applications/Compressor Creator Studio.app";
 
   return {
     dataDir,
@@ -23,6 +31,14 @@ export function loadConfig(): Config {
     fcpDtdPath:
       process.env.CREATOR_STUDIO_FCP_DTD ??
       "/Applications/Final Cut Pro Creator Studio.app/Contents/Frameworks/Interchange.framework/Versions/A/Resources/FCPXMLv1_14.dtd",
+    compressorAppPath,
+    compressorBundleId: "com.apple.CompressorApp",
+    compressorBinaryPath:
+      process.env.CREATOR_STUDIO_COMPRESSOR_BIN ??
+      `${compressorAppPath}/Contents/MacOS/Compressor`,
+    compressorBundledSettingsDir:
+      process.env.CREATOR_STUDIO_COMPRESSOR_BUNDLED_SETTINGS ??
+      `${compressorAppPath}/Contents/PlugIns/Compressor/CompressorKit.bundle/Contents/Frameworks/Compressor.framework/Versions/A/Frameworks/CompressorKit.framework/Versions/A/Resources/Settings`,
   };
 }
 

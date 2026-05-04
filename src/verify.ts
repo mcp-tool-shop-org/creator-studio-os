@@ -73,6 +73,22 @@ export async function verify(): Promise<{
     detail: dtd ? cfg.fcpDtdPath : `missing: ${cfg.fcpDtdPath}`,
   });
 
+  const compressorInstalled = await exists(cfg.compressorAppPath);
+  checks.push({
+    name: "compressor",
+    ok: compressorInstalled,
+    detail: compressorInstalled
+      ? cfg.compressorAppPath
+      : `missing: ${cfg.compressorAppPath} (Compressor wing won't function)`,
+  });
+
+  const compressorBin = await exists(cfg.compressorBinaryPath);
+  checks.push({
+    name: "compressor-binary",
+    ok: compressorBin,
+    detail: compressorBin ? cfg.compressorBinaryPath : "binary not found",
+  });
+
   const dataDir = await exists(cfg.dataDir);
   if (!dataDir) {
     await mkdir(join(cfg.dataDir, "projects"), { recursive: true });
