@@ -115,6 +115,35 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
       .join("\n");
   };
 
+  const renderTitleBody = (
+    t: TitleSpec,
+    offsetAbs: number,
+    indent: string,
+  ) => {
+    const effect = titleEffects.get(t.effectUid)!;
+    const offset = secondsToTime(offsetAbs, rate);
+    const dur = secondsToTime(t.durationSeconds, rate);
+    const lane = t.lane !== 0 ? ` lane="${t.lane}"` : "";
+    const styleId = `ts-${escapeXmlAttr(t.name).replace(/[^a-zA-Z0-9-]/g, "")}-${t.offsetSeconds}`;
+    return `${indent}<title ref="${escapeXmlAttr(effect.id)}" name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"${lane} start="0s">
+${indent}  <text>
+${indent}    <text-style ref="${escapeXmlAttr(styleId)}">${escapeXmlText(t.text)}</text-style>
+${indent}  </text>
+${indent}  <text-style-def id="${escapeXmlAttr(styleId)}">
+${indent}    <text-style font="${escapeXmlAttr(t.textStyle.font)}" fontSize="${t.textStyle.fontSize}" fontColor="${escapeXmlAttr(t.textStyle.fontColor)}" alignment="${escapeXmlAttr(t.textStyle.alignment)}"${t.textStyle.bold ? ' bold="1"' : ""}${t.textStyle.italic ? ' italic="1"' : ""}/>
+${indent}  </text-style-def>
+${indent}</title>`;
+  };
+
+  const findAnchoredTitlesFor = (clipOff: number, clipDur: number): TitleSpec[] => {
+    return titles.filter(
+      (t) =>
+        t.lane !== 0 &&
+        t.offsetSeconds >= clipOff &&
+        t.offsetSeconds < clipOff + clipDur,
+    );
+  };
+
   const renderClip = (
     c: Extract<(typeof spec.spine)[number], { kind: "asset-clip" }>,
   ) => {
@@ -130,30 +159,21 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
       ? ` audioRole="${escapeXmlAttr(c.audioRole)}"`
       : "";
 
+    const anchored = findAnchoredTitlesFor(c.offsetSeconds, c.durationSeconds);
+    const titlesXml = anchored
+      .map((t) => renderTitleBody(t, t.offsetSeconds - c.offsetSeconds, "        "))
+      .join("\n");
+
     const innerParts: string[] = [];
     if (c.volumeDb !== 0) {
       innerParts.push(`        <adjust-volume amount="${c.volumeDb}dB"/>`);
     }
+    if (titlesXml) innerParts.push(titlesXml);
     if (markers) innerParts.push(markers);
-    const inner = innerParts.length > 0 ? `\n${innerParts.join("\n")}\n      ` : "";
+    const inner =
+      innerParts.length > 0 ? `\n${innerParts.join("\n")}\n      ` : "";
 
     return `      <asset-clip ref="${escapeXmlAttr(c.ref)}" name="${escapeXmlAttr(c.name)}" offset="${offset}" duration="${dur}" start="${start}"${enabled}${videoRole}${audioRole}>${inner}</asset-clip>`;
-  };
-
-  const renderTitle = (t: TitleSpec) => {
-    const effect = titleEffects.get(t.effectUid)!;
-    const offset = secondsToTime(t.offsetSeconds, rate);
-    const dur = secondsToTime(t.durationSeconds, rate);
-    const lane = t.lane !== 0 ? ` lane="${t.lane}"` : "";
-    const styleId = `ts-${escapeXmlAttr(t.name).replace(/[^a-zA-Z0-9-]/g, "")}-${t.offsetSeconds}`;
-    return `      <title ref="${escapeXmlAttr(effect.id)}" name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"${lane} start="0s">
-        <text>
-          <text-style ref="${escapeXmlAttr(styleId)}">${escapeXmlText(t.text)}</text-style>
-        </text>
-        <text-style-def id="${escapeXmlAttr(styleId)}">
-          <text-style font="${escapeXmlAttr(t.textStyle.font)}" fontSize="${t.textStyle.fontSize}" fontColor="${escapeXmlAttr(t.textStyle.fontColor)}" alignment="${escapeXmlAttr(t.textStyle.alignment)}"${t.textStyle.bold ? ' bold="1"' : ""}${t.textStyle.italic ? ' italic="1"' : ""}/>
-        </text-style-def>
-      </title>`;
   };
 
   const renderTransition = (t: TransitionSpec) => {
@@ -162,15 +182,34 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
     return `      <transition name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"/>`;
   };
 
-  const spineItems = spec.spine.map((item) => {
-    if (item.kind === "asset-clip") return renderClip(item);
-    if (item.kind === "title") return renderTitle(item);
-    if (item.kind === "transition") return renderTransition(item);
-    throw new CreatorStudioError(
-      "E_FCPXML_INVALID",
-      `Unknown spine item kind: ${(item as { kind: string }).kind}`,
-    );
-  });
+  const anchoredTitleOffsets = new Set<number>();
+  for (const item of spec.spine) {
+    if (item.kind === "asset-clip") {
+      for (const t of findAnchoredTitlesFor(
+        item.offsetSeconds,
+        item.durationSeconds,
+      )) {
+        anchoredTitleOffsets.add(t.offsetSeconds);
+      }
+    }
+  }
+
+  const spineItems = spec.spine
+    .filter((item) => {
+      if (item.kind !== "title") return true;
+      if (item.lane === 0) return true;
+      return !anchoredTitleOffsets.has(item.offsetSeconds);
+    })
+    .map((item) => {
+      if (item.kind === "asset-clip") return renderClip(item);
+      if (item.kind === "title")
+        return renderTitleBody(item, item.offsetSeconds, "      ");
+      if (item.kind === "transition") return renderTransition(item);
+      throw new CreatorStudioError(
+        "E_FCPXML_INVALID",
+        `Unknown spine item kind: ${(item as { kind: string }).kind}`,
+      );
+    });
 
   const spineXml = spineItems.join("\n");
 
