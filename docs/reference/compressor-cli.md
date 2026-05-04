@@ -65,6 +65,43 @@ From the app's `Info.plist`:
 
 Handing a `.compressorbatch` to `open -b com.apple.CompressorApp` queues the batch in the GUI. Reasonable fallback when the CLI form is finicky.
 
+## Compressor 5.2 silently removed codecs (2026-04-09)
+
+Per [Apple's release notes](https://support.apple.com/en-lamr/102745), 5.2 removed:
+
+- H.264 Blu-ray
+- H.264 interlaced
+- Dolby Digital
+- AVC-Intra-on-Apple-Silicon
+
+Old `.compressorsetting` files referencing these codecs **fail silently** at encode time. A future `compressor_settings_list` enhancement should flag presets whose codec is no longer available on the host's Compressor version.
+
+5.0 (2026-01-28) added Apple Immersive Video / Vision Pro spatial packaging — UI feature, no CLI exposure. There is no Compressor 5.1; the line jumped 5.0 → 5.2.
+
+## Where queued / running batches live (research target)
+
+`~/Library/Application Support/Compressor/Storage/<UUID>/{jobs,shared}/` ([discussions.apple.com 5889264](https://discussions.apple.com/thread/5889264)) is plausibly where `compressor_status` can poll queue state without UI scripting. **Untested.** Investigation: open Compressor, queue a batch, watch this directory for state files.
+
+Compressor logs are XML, written to disk via the Network Encoding Monitor's "save logs" action ([Apple Compressor interface](https://support.apple.com/guide/compressor/compressor-interface-cpsr8747af64/mac)) — likely a better progress source than polling output-file size.
+
+## Watch folders submit partial files (race condition)
+
+Compressor's watch-folder feature submits source files **before the copy completes** for any source larger than ~1 minute of copy time ([macscripter thread](https://www.macscripter.net/t/watch-folder-for-compressor-droplet-problems/45969)). Partial-file submission is the dominant failure mode.
+
+Mitigation: copy to a staging directory, then atomic `mv` into the watch folder. A future `compressor_watch_create` MCP tool should bake this in as a "stable size" pre-flight (poll until file size unchanged for N seconds before submission).
+
+Watch folders also do **not** follow symlinks and do **not** move source files after submission — cleanup is the integrator's problem.
+
+## `.compressorsetting` and `.compressorbatch` plist schemas
+
+Both are property-list XML, but Apple does not document the schemas. To reverse-engineer:
+
+```bash
+plutil -convert xml1 -o - "/path/to/preset.compressorsetting"
+```
+
+Display name lives in either a `Name` string property or a `NameKey` reference resolved against framework localization tables. `plutil -p` is the path to extracting human-readable preset names — on the roadmap as `compressor_settings_inspect`.
+
 ## Encoding without Compressor
 
 For pure ProRes / H.264 transcodes that don't need Compressor's filter chain or color management, **`ffmpeg`** is the right tool. Faster, fully scriptable, no entitlement dance. Document it as a fallback but not the primary `compressor_*` path.

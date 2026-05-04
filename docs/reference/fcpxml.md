@@ -64,4 +64,10 @@ Read the actual DTD in the app bundle when in doubt — Apple's online docs are 
 
 We currently **author** FCPXML — write XML, hand to FCP. Reading FCPXML that FCP has exported is a future direction (parsing for round-trip / verification / extraction). The DTD validates either direction; the parser doesn't exist yet.
 
-Last reviewed: 2026-05-04 against FCP 12.2.
+## Interop note
+
+**[DareDev256/fcpxml-mcp-server](https://github.com/DareDev256/fcpxml-mcp-server)** caps at FCPXML 1.11 (53 tools, MIT, last rev 2026-05-02). **OpenTimelineIO's [`otio-fcpx-xml-lite-adapter`](https://pypi.org/project/otio-fcpx-xml-lite-adapter/)** is tested through 1.9/1.13. **[Pipeline Neo](https://github.com/TheAcharya/pipeline-neo)** is the only Swift library claiming 1.14 (experimental, not actively maintained).
+
+Implication: if our `ProjectSpec` exposes an opt-in `fcpxmlVersion: "1.13"`, we get cheap interop with OTIO consumers, Pipeline Neo, and Resolve. The 1.13 → 1.14 schema diff is small (smart-collection / match-text / match-analysis-type only) so the cost is near-zero.
+
+Last reviewed: 2026-05-04 against FCP 12.2 (Creator Studio).

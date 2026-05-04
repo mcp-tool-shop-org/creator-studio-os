@@ -4,6 +4,8 @@
 
 Motion has **NO `.sdef`** in its bundle (verified via `find` across `Motion Creator Studio.app/`). Same posture as Compressor and Logic.
 
+**HOWEVER**: Motion's file format (OZML) **is** documented by Apple. This is the lever. See "OZML — the load-bearing fact" below.
+
 Bundle ID `com.apple.motionappApp` (post-rename — note the doubled `App`), v6.2 in Creator Studio.
 
 ## What you CAN do
@@ -12,12 +14,34 @@ Bundle ID `com.apple.motionappApp` (post-rename — note the doubled `App`), v6.
 - System Events `is running` / `activate` for app lifecycle
 - That's it for external automation
 
-## What you CANNOT do (without UI scripting)
+## OZML — the load-bearing fact
 
-- Parameterize a `.motn` template programmatically (the template file format is undocumented)
-- Render / export a Motion composition
-- Modify objects / behaviors / publishers from outside Motion
-- Read project metadata (frame size, duration, layer count)
+Motion's `.motn` and `.moti` files are **plain-text XML in the OZML format** (currently `<ozml version="4.0">`), and Apple ships an archived but explicit reference:
+
+- [Motion XML Programming Guide — Customizing](https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/motion_XML_guide/Examples/Examples.html)
+- [Motion XML Overview](https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/motion_XML_guide/Overview/Overview.html)
+
+Apple-documented external use cases include text replacement, camera-keyframe import, and media swap. The doc explicitly says the examples are "a starting point to develop your own routines or tools to automate Motion offline editing or management tasks."
+
+Parameter shape:
+
+```xml
+<parameter name="Frame Rate" id="107" flags="64" value="29.976" />
+<parameter name="Position" id="1" flags="16">
+  <curve>
+    <keypoint frame="0" value="..." interpolation="..."/>
+  </curve>
+</parameter>
+```
+
+**No public open-source `.motn` parser/generator exists on GitHub as of 2026-05-04** — OZML mutation is a genuinely novel automation lever. A `motion_template_set_param` tool (open `.motn`, mutate parameter values, save back) is feasible *today* with `xmllint` / `fast-xml-parser` and would be the first MCP-shaped offering of this capability anywhere.
+
+## What you still CANNOT do (without UI scripting)
+
+- Render / export a Motion composition (no `motion -render` CLI exists, confirmed across [Apple Community thread 1278096](https://discussions.apple.com/thread/1278096) and [thread 748333](https://discussions.apple.com/thread/748333) from 2008 to 2026)
+- Drive Motion's UI from outside (no sdef, no AppleScript)
+- Modify objects / behaviors / publishers via the running app
+- Trigger render queue programmatically — the path is `cmd-E` Send to Compressor (UI scripting) or human-mediated
 
 ## Realistic v1.4 scope
 
@@ -40,11 +64,13 @@ Motion's value is the **published parameters** feature: a Motion-built title or 
 
 So Motion is "human authors the template once; FCP-XML authors uses of it forever." The `motion_*` wing is a stub that lets us *open* a Motion template for human work; the real composition happens in FCP.
 
-## Out of scope (unless Apple changes things)
+## Out of scope (until Apple ships render-from-CLI)
 
-- `.motn` template authoring from JSON
-- Motion → Compressor render handoff (no scripted render command)
-- Real-time parameter manipulation
+- Motion → Compressor render handoff via a single CLI call (no scripted render command)
+- Real-time parameter manipulation while Motion is rendering
+- Driving the Motion UI as a primary path
+
+In scope (and prioritized for next Motion release): **OZML parameter mutation** via direct XML manipulation. See the swarm-research doc at `docs/research/2026-05-04-swarm.md`.
 
 ## Watch list
 

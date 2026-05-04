@@ -96,4 +96,32 @@ mdls -name kMDItemCFBundleIdentifier "/Applications/Pixelmator Pro Creator Studi
 
 The sdef inside the bundle still uses the `com.pixelmatorteam.pixelmator-pro.*` access-group identifiers — internal Pixelmator naming Apple hasn't rewritten. It works fine.
 
+## Top-level commands easy to miss
+
+Easy to overlook when scanning the dictionary by suite — these are NOT layer methods:
+
+- `detect face` — returns face rectangles for an open document
+- `detect QR code` — extracts QR / barcode payloads
+- `replace text` — global text replacement across all text layers in a document
+
+## Shortcuts.app — the parallel automation channel
+
+Pixelmator ships **28 Shortcuts.app actions** ([MacRumors 2021-10-26](https://www.macrumors.com/2021/10/26/pixelmator-pro-2-2-monterey-support-28-shortcuts/)) including ML knobs that are **NOT** exposed via sdef:
+
+- `Increase Resolution of Image` (ML upscale)
+- `Match Colors of Images` (ML color matching)
+- `Optimize Image for Web`
+- `Overlay Image`
+- `Remove Background from Portrait Photo` (ML cutout)
+- `Replace Layer in Document`
+- `Replace Text in Document`
+
+A `pixelmator_run_shortcut` bridge (via `shortcuts run "<name>"` CLI) would expose ML capabilities the AppleScript surface alone can't reach. On the roadmap.
+
+## Standalone vs Creator Studio bundle ID
+
+Both **Pixelmator Pro 3.8 standalone** and **Pixelmator Pro 4.2 (Creator Studio)** ship as `com.apple.pixelmator` post-acquisition (Apple completed Pixelmator acquisition [2025-02-11](https://www.macrumors.com/2025/02/11/apple-completes-pixelmator-acquisition/)). Two installs **can coexist** — disambiguate by version string, not by bundle ID.
+
+The sdef internals still use `com.pixelmatorteam.pixelmator-pro.*` access-group identifiers (Pixelmator's pre-acquisition namespace) that Apple hasn't rewritten. Functionally identical.
+
 Last reviewed: 2026-05-04 against Pixelmator Pro 4.2 (Creator Studio).
