@@ -58,18 +58,33 @@ tell document "name" to crop bounds {x, y, width, height}
 
 ## Document lifecycle
 
-Opens via standard `open` command (inherits CocoaStandard suite). After opening, the document name is the filename without the path. AppleScript references the document by name:
+Opens via standard `open` command (inherits CocoaStandard suite).
+
+### Document name quirk (Pixelmator strips the extension)
+
+**The document name in Pixelmator is the filename WITHOUT extension.** Verified 2026-05-04 against Pixelmator Pro 4.2: opening `/path/test-pattern.png` produces a document named `test-pattern`, not `test-pattern.png`. Subsequent tell-blocks must address it by the stripped name, or by `front document`.
+
+The robust pattern is to **query the document name from Pixelmator after opening**, instead of inferring from the source path:
 
 ```applescript
 tell application id "com.apple.pixelmator"
+  activate
   open POSIX file "/Users/x/photo.jpg"
-  -- now: document "photo.jpg" is open
-  tell document "photo.jpg" to export to ...
-  close document "photo.jpg"
+  delay 1.5
+  return name of front document
+end tell
+```
+
+The returned name is the canonical handle for `tell document "name" to ...` calls.
+
+```applescript
+tell application id "com.apple.pixelmator"
+  tell document "photo" to export to ...
+  close document "photo" saving no
 end
 ```
 
-Note the implicit lifecycle: open creates a document; tell-block addresses it by filename; close finalizes.
+Open is async — Pixelmator may take 1+ seconds to register the document. Our runner uses a 1.5s `delay` after open (sometimes needs more for large files; bump if you see "Can't get document" errors).
 
 ## Bundle ID rename
 

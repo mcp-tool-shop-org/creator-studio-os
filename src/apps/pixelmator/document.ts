@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import {
   runAppleScript,
   escapeAppleScriptString,
@@ -30,9 +29,10 @@ export async function openDocument(path: string): Promise<{ name: string }> {
   const escaped = escapeAppleScriptString(path);
   const script = tellApp(`  activate
   open POSIX file "${escaped}"
-  delay 0.3`);
-  await runAppleScript(script, { timeoutMs: 60_000 });
-  return { name: basename(path) };
+  delay 1.5
+  return name of front document`);
+  const name = await runAppleScript(script, { timeoutMs: 60_000 });
+  return { name: name.trim() };
 }
 
 export async function closeDocument(name: string): Promise<void> {
