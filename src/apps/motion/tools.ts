@@ -7,6 +7,8 @@ import {
   cloneTemplate,
 } from "./ozml.js";
 import { validateTemplate } from "./validate.js";
+import { renderViaCompressor } from "./render.js";
+import { publishToFcp } from "./publish.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -198,6 +200,58 @@ export function registerMotionTools(server: McpServer) {
     async ({ sourcePath, destinationPath }) => {
       try {
         const result = await cloneTemplate(sourcePath, destinationPath);
+        return ok(result);
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_render_via_compressor",
+    "Render a Motion .motn template headlessly via Compressor (-jobpath). This is the first programmatic Motion render path in any MCP — no UI scripting required. Returns jobId+batchId for piping into compressor_monitor_stream.",
+    {
+      motnPath: z.string().describe("Absolute path to a .motn file"),
+      settingPath: z.string().describe("Absolute path to a .compressorsetting file"),
+      locationPath: z.string().describe("Absolute path for the rendered output file"),
+      batchName: z.string().optional(),
+    },
+    async (args) => {
+      try {
+        const result = await renderViaCompressor({
+          motnPath: args.motnPath,
+          settingPath: args.settingPath,
+          locationPath: args.locationPath,
+          batchName: args.batchName,
+        });
+        return ok(result);
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_publish_to_fcp",
+    "Add or remove the 'Publish To FCP' marker on a Motion template parameter. publish=true exposes the parameter in FCP's inspector; publish=false hides it. Pairs with fcp_bind_motion_param to close the killer chain.",
+    {
+      path: z.string().describe("Absolute path to the .motn file (will be modified in-place unless outputPath given)"),
+      paramName: z.string().describe("Parameter name attribute, e.g. 'Headline'"),
+      paramId: z.number().int().describe("Parameter id attribute (integer)"),
+      publish: z.boolean().describe("true = add the Publish To FCP marker; false = remove it"),
+      matchIndex: z.number().int().nonnegative().optional().describe("If multiple params share name+id, select the Nth (0-based)"),
+      outputPath: z.string().optional().describe("Write output here instead of overwriting the source"),
+    },
+    async (args) => {
+      try {
+        const result = await publishToFcp({
+          path: args.path,
+          paramName: args.paramName,
+          paramId: args.paramId,
+          publish: args.publish,
+          matchIndex: args.matchIndex,
+          outputPath: args.outputPath,
+        });
         return ok(result);
       } catch (e) {
         return err(e);
