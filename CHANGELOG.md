@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] — 2026-05-05
+
+### Added (19 new tools — Phase 1 automation chain complete)
+
+**Compressor monitoring + settings intelligence (Tickets 1.3+1.4)**
+
+- **`compressor_monitor_stream`** — stream live job progress from `Compressor -monitor -format json` as MCP `notifications/progress` events. First programmatic Compressor progress feed in any MCP.
+- **`compressor_status`** — one-shot status query for a specific job/batch.
+- **`compressor_pause`** / **`compressor_resume`** / **`compressor_kill`** — job lifecycle control.
+- **`compressor_wait_for`** — block until a job reaches a terminal state (completed/failed/cancelled).
+- **`compressor_settings_inspect`** — parse a `.compressorsetting` file and return video codec, container, resolution, frame rate, bitrate, and audio codec metadata. Uses `fast-xml-parser`.
+- **`compressor_settings_resolve`** — resolve a human-readable preset display name to its file path.
+- **`compressor_codec_availability`** — static table of codec availability by macOS arch + Compressor major version (e.g., ProRes RAW available arm64 10.4.4+; H.264 always available).
+- Enhanced **`compressor_settings_list`** with optional `withAvailability` flag.
+
+**Motion OZML deep tooling (Tickets 1.5–1.7)**
+
+- **`motion_template_validate`** — validate a `.motn` / `.moti` against **31 OZML structural invariants** (factory id/uuid uniqueness, scenenode factory refs, global id uniqueness, parameter id collisions, keyframe value+curve conflicts, keypoint monotonicity, glyph count, kerning sequence, styleRun contiguity, dead style refs, clip id uniqueness, creationDuration formula, timing.out bounds, Publish To FCP marker placement). Returns `ok`, `violations[]`, `warnings[]`.
+- **`motion_render_via_compressor`** — render a `.motn` headlessly via `Compressor -jobpath`. First programmatic Motion render path in any MCP — no UI scripting required. Returns `jobId`+`batchId` for piping into `compressor_monitor_stream`.
+- **`motion_publish_to_fcp`** — add or remove the `"Publish To FCP"` marker on an OZML parameter. `publish=true` exposes the parameter in FCP's inspector; `publish=false` hides it. This is the OZML-side lever that makes the FCP↔Motion chain programmable.
+
+**FCP automation chain (Tickets 1.8–1.11)**
+
+- **`fcp_effects_catalog`** — walk `~/Movies/Motion Templates.localized/`, `/Library/Application Support/Motion/Templates.localized/`, and the FCP-bundled `MotionEffect.fxp` path. Parses each `.moti`/`.motn` for display name, published parameter names, and param count. Cache at `<dataDir>/.csos/effects-catalog.json`. Supports `kind` filter, name lookup (`E_EFFECT_NOT_FOUND`), and `refresh=true`.
+- **`fcp_safety_compound`** — detect primary-spine clip overlaps that trigger implicit compound clip insertion by FCP.
+- **`fcp_safety_captions`** — lint caption/subtitle role assignments for the `"Role.Subrole"` format FCP requires; flags missing subroles and incorrect iTT/SRT pattern.
+- **`fcp_safety_anchors`** — detect title (connected-clip) anchor collisions: two titles on the same lane with overlapping time ranges.
+- **`fcp_bind_motion_param`** — read published parameters from a `.moti`/`.motn`; optionally build a `MotionParamBinding` `{ name, key, value }` for `TitleSpec.params`. Verifies the parameter has the Publish To FCP marker.
+- **`fcp_round_trip_diff`** — compare two FCPXML files (before/after FCP import) and return a structured diff of 16 change kinds: clip-offset-changed, clip-duration-changed, clip-role-changed, clip-volume-changed, title-text/param/lane-changed, clip/title/transition-inserted/deleted, asset-replaced, format-changed. Sub-frame tolerance (1ms) filters FCP's rational→decimal rounding noise.
+- **`fcp_round_trip_capture`** — extract FCPXML from inside a `.fcpbundle` library package by recursively finding `object.fcpxml` or `.fcpxml` files (both modern directory-format and legacy single-file). No FCP instance required.
+
+### Changed
+
+- **`fcp_fcpxml_build`** now runs safety pre-flights by default. New `allowUnsafe` and `skipPreflight` params suppress/skip checks. Preflight result included in output.
+- **`fcp_fcpxml_build_write_import`** accepts `allowUnsafe` for the same pre-flight control.
+- **`TitleSpec`** gains optional `params: MotionParamBinding[]` — drives `<param name="..." key="..." value="..."/>` children in the emitted `<title>` element.
+
+### Internal
+
+- **Ledger** (`src/ledger/index.ts`) — append-only JSONL operation audit trail, O_APPEND atomic writes, `withLedger()` helper. Path: `<dataDir>/projects/<name>/.csos/ledger.jsonl`.
+- **`runApp`** (`src/runners/runApp.ts`) — unified facade over osascript/open. `BatchRunner` accumulates script fragments and flushes as a single `osascript` call, eliminating the ~400ms per-call startup tax. Dry-run mode enables unit tests without live apps.
+- **`fast-xml-parser`** dependency already added in v1.5.0 context; now used by Compressor settings inspector and FCPXML round-trip parser.
+- New error codes: `E_OZML_VALIDATION_FAILED`, `E_OZML_PUBLISH_MARKER_MISSING`, `E_FCPXML_ROUNDTRIP_FAILED`, `E_FCPXML_PARSE_FAILED`, `E_EFFECT_NOT_FOUND`, `E_COMPOUND_UNSAFE`, `E_CAPTION_ROLE_MISSING`, `E_ANCHOR_COLLISION`, `E_COMPRESSOR_MONITOR_FAILED`, `E_LEDGER_WRITE_FAILED`.
+
+### Tool count: 78 (was 59)
+
+| App | Tools | Surface |
+|-----|-------|---------|
+| Final Cut Pro | 24 | FCPXML author + AppleScript read + safety + diff + capture |
+| Compressor | 15 | CLI encode + monitor stream + settings intelligence |
+| Motion | 6 | File handoff + OZML inspect/mutate/validate/render/publish |
+| Pixelmator Pro | 11 | AppleScript: open/close/export/resize/crop/rotate/flip/batch |
+| Logic Pro | 3 | File handoff |
+| Keynote | 8 | AppleScript: open/close/export PDF/images/movie/PPTX |
+| Pages | 5 | AppleScript: open/close/export 5 formats |
+| Numbers | 5 | AppleScript: open/close/export PDF/Excel/CSV |
+| **Total** | **77** | |
+
+### Coverage
+
+157 tests across 18 test files.
+
 ## [1.5.0] — 2026-05-04
 
 ### Added (Motion OZML mutation — novel capability)
