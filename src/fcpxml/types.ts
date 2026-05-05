@@ -74,6 +74,13 @@ export const ClipSpecSchema = z.object({
     .describe("e.g. 'Dialogue.dialogue', 'Music.music', 'Effects.effects'"),
 });
 
+export const MotionParamBindingSchema = z.object({
+  name: z.string().describe("Parameter name (FCPXML <param name=>)"),
+  key: z.string().describe("FCPXML parameter key path (from fcp_bind_motion_param or FCP export)"),
+  value: z.string().describe("String value to set on the parameter"),
+});
+export type MotionParamBinding = z.infer<typeof MotionParamBindingSchema>;
+
 export const TitleSpecSchema = z.object({
   kind: z.literal("title"),
   name: z.string().default("Title"),
@@ -94,6 +101,10 @@ export const TitleSpecSchema = z.object({
     bold: false,
     italic: false,
   }),
+  params: z
+    .array(MotionParamBindingSchema)
+    .optional()
+    .describe("Motion published parameter bindings — drives <param> children in the FCPXML <title>"),
 });
 export type TitleSpec = z.infer<typeof TitleSpecSchema>;
 

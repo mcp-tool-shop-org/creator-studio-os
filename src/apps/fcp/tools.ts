@@ -21,6 +21,7 @@ import {
   checkAnchorSafety,
   runSafetyPreflights,
 } from "./safety.js";
+import { readPublishedParams, buildParamBinding } from "./motion-bind.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -387,6 +388,41 @@ export function registerFcpTools(server: McpServer) {
     async () => {
       try {
         return ok({ running: await isFcpRunning() });
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_bind_motion_param",
+    "Read a Motion .moti/.motn template and return the published parameters available for FCP binding. Optionally build a MotionParamBinding ({ name, key, value }) for one named parameter — add it to a TitleSpec.params array before calling fcp_fcpxml_build.",
+    {
+      motnPath: z.string().describe("Absolute path to a .moti or .motn file"),
+      paramName: z
+        .string()
+        .optional()
+        .describe("If provided, build a binding for this specific published parameter"),
+      value: z
+        .string()
+        .optional()
+        .describe("Value to assign (required when paramName is given)"),
+    },
+    async ({ motnPath, paramName, value }) => {
+      try {
+        if (paramName !== undefined) {
+          if (value === undefined) {
+            throw new CreatorStudioError(
+              "E_OZML_PARAM_NOT_FOUND",
+              "value is required when paramName is provided",
+              "Pass a string value to bind to the parameter.",
+            );
+          }
+          const binding = await buildParamBinding({ motnPath, paramName, value });
+          return ok({ binding });
+        }
+        const published = await readPublishedParams(motnPath);
+        return ok({ publishedParams: published });
       } catch (e) {
         return err(e);
       }

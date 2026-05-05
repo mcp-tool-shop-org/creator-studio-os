@@ -135,7 +135,14 @@ export function buildProjectFcpxml(
     const dur = secondsToTime(t.durationSeconds, rate);
     const lane = t.lane !== 0 ? ` lane="${t.lane}"` : "";
     const styleId = `ts-${escapeXmlAttr(t.name).replace(/[^a-zA-Z0-9-]/g, "")}-${t.offsetSeconds}`;
-    return `${indent}<title ref="${escapeXmlAttr(effect.id)}" name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"${lane} start="0s">
+    const paramsXml = (t.params ?? [])
+      .map(
+        (p) =>
+          `${indent}  <param name="${escapeXmlAttr(p.name)}" key="${escapeXmlAttr(p.key)}" value="${escapeXmlAttr(p.value)}"/>`,
+      )
+      .join("\n");
+    const paramBlock = paramsXml ? `\n${paramsXml}` : "";
+    return `${indent}<title ref="${escapeXmlAttr(effect.id)}" name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"${lane} start="0s">${paramBlock}
 ${indent}  <text>
 ${indent}    <text-style ref="${escapeXmlAttr(styleId)}">${escapeXmlText(t.text)}</text-style>
 ${indent}  </text>
