@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.5] — 2026-05-05
+
+### Added (Phase 2.3 — Keynote 45-tool leapfrog)
+
+**48 new Keynote MCP tools — total Keynote surface raised from 8 to 56:**
+
+- **2.3.1 Document management (3 tools):** `keynote_list_presentations`, `keynote_create_presentation` (with optional theme + dimensions), `keynote_save`.
+- **2.3.2 Theme & master (4 tools):** `keynote_list_themes`, `keynote_apply_theme`, `keynote_list_masters`, `keynote_set_slide_master`.
+- **2.3.3 Slide CRUD (7 tools):** `keynote_list_slides`, `keynote_make_slide`, `keynote_delete_slide`, `keynote_duplicate_slide`, `keynote_reorder_slide`, `keynote_skip_slide`, `keynote_get_slide`.
+- **2.3.4 Content (6 tools):** `keynote_set_title`, `keynote_set_body` (resize-before-text discipline for >48pt clipping bug), `keynote_set_text_style`, `keynote_get_presenter_notes`, `keynote_set_presenter_notes`, `keynote_extract_all_notes` (crew handoff — all slides at once).
+- **2.3.5 Transitions (1 tool):** `keynote_set_transition` — all 43 sdef-defined effects plus full transition properties record (effect, duration, delay, automatic).
+- **2.3.6 Visual elements (10 tools):** `keynote_insert_image` (with VoiceOver description), `keynote_set_voiceover_description`, `keynote_insert_shape` (with `object text` iWork quirk handled), `keynote_insert_line`, `keynote_insert_table`, `keynote_read_table`, `keynote_write_table`, `keynote_make_chart` (sdef-native `add chart` with full data — competitors miss this), `keynote_make_image_slides` (Apple-bundled bulk-image-deck compound), `keynote_list_items`.
+- **2.3.7 Item ops (3 tools):** `keynote_position_item`, `keynote_format_item` (opacity/rotation/reflection), `keynote_get_item_info`.
+- **2.3.8 Slideshow (2 tools):** `keynote_start`, `keynote_stop`.
+- **2.3.9 Creator Studio AI (3 tools):** `keynote_clean_up_slide`, `keynote_super_resolution`, `keynote_remove_background`.
+- **2.3.10 sdef-depth exports (3 tools beyond existing):** `keynote_export_pdf_advanced` (handout layout / slide numbers / image quality / password), `keynote_export_movie_advanced` (full codec ladder: h264/HEVC/ProRes/ProRes422/4444 + 9 framerates), `keynote_export_html`. Updated `keynote_export_images` with `allStages` + `compressionFactor`.
+- **2.3.11 Doc config (2 tools):** `keynote_set_doc_size` (1920×1080 vs 1024×768 toggle), `keynote_set_kiosk_mode` (autoPlay/autoLoop/autoRestart/idleTimeout).
+- **2.3.12 Cross-app composition (4 tools — first cross-app primitives in csos):**
+  - `keynote_from_markdown` — md2key-style markdown→Keynote via inline parser (cover/h1/h2/h3/quote/bullets/imageOnly/code master mapping, `masterMap` override, single-osascript batched write — saves ~400ms × N round-trips).
+  - `keynote_to_storyboard_fcp` — export slide PNGs + extract notes → build FCPXML gap timeline with one asset-clip per slide, slide titles as clip names — ready to import into FCP as a starting edit. **Phase 2's first cross-app primitive.**
+  - `keynote_to_compressor_gif` — export deck → QuickTime movie → Compressor GIF encode. Cross-app pipeline: Keynote → Compressor.
+  - `keynote_plan_magic_move` — sets magic move transition and renames elements by shared name to enable Keynote's element-identity pairing (pairing by name, not position, is folklore — now encoded).
+
+**New markdown parser module:** `src/apps/keynote/markdown.ts` — lightweight sdf-free parser for `keynote_from_markdown`. Pure TypeScript, no dependencies. Slide-type detection: heading depth → master, ≥3 bullets → bullets master, standalone `![]()` → imageOnly, `> blockquote` → quote, ` ``` ` code fence → code.
+
+### Internal
+
+- 360 unit tests (was 317) — 2 new test files: `keynote-markdown.test.ts` (29 tests), `keynote-storyboard.test.ts` (14 tests).
+- 49 new tool-compass intent fixtures.
+- Total: **150 MCP tools** (was 102 — +48 Keynote tools).
+
 ## [1.6.4] — 2026-05-05
 
 ### Added (Phase 2.2 — Motion text editor + FCP timeline shapes)
