@@ -19,7 +19,26 @@ The 2026-05-04 research swarm flagged that **no public open-source `.motn` parse
 
 Implementation: targeted attribute regex (NOT full XML round-trip). Preserves whitespace, comments, ordering, and structural integrity. Smoke-proven on Apple's bundled Snap-Lower Third (214,592 bytes, 1,983 parameters): mutated `Size` (id=3) from `74` → `120`, file delta exactly +1 byte.
 
-## v1.6 — OZML text replacement (deferred — high structural risk)
+## Roadmap-altering findings from 2026-05-05 deep research swarm
+
+Three discoveries reshape this roadmap. See [`docs/research/2026-05-05-deepswarm/05-motion-depth.md`](./research/2026-05-05-deepswarm/05-motion-depth.md) for the full ground-truth grep against Motion 6.2's bundled `Atmospheric-Lower Third.motn`.
+
+1. **Headless Motion render path exists.** `compressor -jobpath <file.motn> -settingpath <preset> -locationpath <out>` accepts `.motn` files directly and honors the render quality saved inside. **First headless Motion render path in any MCP** — every other Motion automation project bottoms out at "and then a human presses cmd-E." Promote `motion_render_via_compressor` to **v1.6**.
+2. **Published-parameter marker discovered** (the FCP↔Motion binding lever). `<parameter name="Publish To FCP" id="350" flags="80" default="1" value="1"/>` is the OZML-side marker FCP scans for. Programmatic publishing of any Motion parameter to FCPXML is now a one-line OZML mutation via the v1.5 mutation engine. Add `motion_publish_to_fcp` to **v1.6**.
+3. **Bitfield model for `flags` confirmed.** Observed: `16` visible, `64` semi-readonly, `80=0x50` published primitive, `4112=0x1010` parent-with-children, bit 24 (`0x1000000`) = "currently active in FCP." The "flags is opaque" framing is replaced.
+
+Other confirmed facts: glyph count includes newlines (16 glyphs for "Welcome to\nTexas"); factory IDs are integers, factory UUIDs are universal (anchor lookups by UUID, not ID); 22 factories declared in a "simple" lower-third (the Motion-5-era count of 16 is stale).
+
+## v1.6 — Render path + validate + publish (Phase 1 of build)
+
+Promoted from later versions because the swarm found cheap wins.
+
+- **`motion_render_via_compressor(motnPath, settingPath, outputPath, options?)`** — Compressor CLI wrapper. Compressor reads render quality from the `.motn` itself; the user pre-saves quality once, csos drives renders forever.
+- **`motion_template_validate(path)`** — implements all 31 invariants from §1 of the slice doc (document, parameter-tree, text-factory, media-factory, scene, published). Returns `{ ok, violations: Violation[], warnings: Warning[] }`. **Load-bearing for v1.7+**: both `OzmlTextEditor` and `OzmlMediaSwap` MUST run it before write.
+- **`motion_publish_to_fcp(path, paramName, paramId, options?)`** — toggle the `Publish To FCP` marker on/off for a parameter, programmatically. Pairs with v1.5's `motion_template_set_param`.
+- **`motion_template_clone(src, dst)`** is already shipped. The chain `clone → set_param → publish → validate → render_via_compressor` is the v1.6 closed loop.
+
+## v1.7 — OZML text replacement
 
 Per [Apple's OZML Programming Guide](https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/motion_XML_guide/Examples/Examples.html), changing a title's text requires coordinated updates across:
 
@@ -30,12 +49,15 @@ Per [Apple's OZML Programming Guide](https://developer.apple.com/library/archive
 
 When text length changes (e.g. "Texas" → "California"), the styleRun lengths must be updated proportionally **and** the `<style>` elements they reference must still exist. One stale `id` and Motion silently drops the title.
 
-Plan when we ship this:
-1. Build a high-level `OzmlTextEditor` class that owns the four parallel edits.
-2. Validate after every mutation — count glyph objects, verify `id` sequence is dense, verify styleRun ranges are gap-free.
-3. Smoke against multiple Apple title templates before exposing the tool.
+**Implementation pinned by the deep swarm.** `OzmlTextEditor` design at slice §2:
+1. Public API: `editText(path, newText, opts?: { textNodeIndex?: number })`.
+2. Five validators (`validateGlyphCount`, `validateKerningSequence`, `validateStyleRunContiguity`, `validateStyleReferences`, `validateAsciiVsUnicode`) gate the write.
+3. Edit plan distributes length delta to the LAST styleRun (safe; redistributing across runs risks crossing styled-vs-unstyled boundaries).
+4. Atomic temp-file + rename — never leave a half-written `.motn`.
+5. Multi-byte UTF-8 codepoint encoding empirically unverified; first ship gates non-ASCII behind `--unsafe-non-ascii` until smoke-tested against a Japanese template.
+6. `motion_template_validate` (v1.6) is the load-bearing pre-write check.
 
-## v1.7 — OZML media swap (deferred — even higher risk)
+## v1.8 — OZML media swap
 
 Replacing the media a Motion composition references requires coordinated updates across:
 
@@ -51,13 +73,13 @@ Replacing the media a Motion composition references requires coordinated updates
 
 NTSC adjustment: 30 fps → 29.976 fps; multiply standard frame rate by 0.9999; set `<NTSC>1</NTSC>` in `<sceneSettings>`.
 
-`OzmlMediaSwap` will need access to ffprobe (for duration / dimensions / frame rate) plus the OZML mutator. Defer until v1.6 lands.
+`OzmlMediaSwap` requires `ffprobe` for the new media's duration / dimensions / frame rate plus the OZML mutator + validator. Sequencing: v1.6 validate → v1.7 text → v1.8 media (each builds on the last).
 
-## v1.8 — Auxiliary OZML tooling
+## v1.9 — Auxiliary OZML tooling
 
-- `motion_templates_list(directory)` — recursively enumerate `.motn` / `.moti` in a directory, return paths + names + factory counts. Useful for browsing `~/Movies/Motion Templates.localized/` programmatically.
-- `motion_template_diff(pathA, pathB)` — structural diff of two OZML files, focused on parameter values (skip whitespace / formatting). For verifying a mutation landed correctly without eyeballing 1,983 lines.
-- `motion_template_validate(path)` — sanity-check structural invariants (factory IDs unique, parameter IDs unique within scope, styleRun ranges gap-free, glyph count = text length).
+- `motion_templates_list(directory)` — recursively enumerate `.motn` / `.moti` in a directory; minimal-header parse for name + factory count. Pairs with v1.6's `fcp_effects_catalog` as the JIT capability resource for Motion templates.
+- `motion_template_diff(pathA, pathB)` — structural diff focused on parameter values (skip whitespace / formatting). Verifies a mutation landed correctly without eyeballing 1,983 lines.
+- `motion_factory_taxonomy_compile(directory)` — walk every bundled template, collect UUID→description mappings from `<factory><description>`, build a canonical `factory-taxonomy.json`. Action item: anchor lookups by UUID, not integer ID.
 
 ## v2.0 — Cross-app composition
 
@@ -71,14 +93,14 @@ The OZML mutation work (v1.5) is the foundation; v2.0 wires it into multi-app se
 
 ## Out of scope (probably forever)
 
-- **Rendering `.motn` to disk programmatically** — no `motion -render` CLI exists ([Apple Community 2008-2026](https://discussions.apple.com/thread/1278096)). The path is `cmd-E` Send to Compressor (UI scripting) or human-mediated. After Effects + `aerender` is the right tool for unattended render.
+- **`motion -render` CLI** — Apple ships none ([Apple Community thread 1278096](https://discussions.apple.com/thread/1278096), 2008→2026). **Not the same as headless render** — `compressor -jobpath <.motn>` IS a headless render path and ships in v1.6.
 - **Driving Motion's UI as a primary path** — no sdef means UI scripting is the only option, and it's locale + version coupled. Defer indefinitely.
-- **Authoring `.motn` from JSON spec** — different problem space; the format is too rich (16 factory types, parameter inheritance, scene graph) to round-trip from a flat spec without losing intent. Mutation of existing templates is the right scope.
+- **Authoring `.motn` from JSON spec** — different problem space; the format is too rich (22+ factories per modern template, parameter inheritance, scene graph) to round-trip from a flat spec without losing intent. Mutation of existing templates is the right scope.
 
 ## Testing strategy
 
 - Unit tests on synthetic OZML fixtures (already shipped in v1.5: 11 tests covering inspect / mutate / clone / matchIndex / outputPath / XML escaping / error paths).
 - Real-template smoke per release: clone an Apple-bundled `.motn`, mutate, re-inspect, confirm byte-delta matches expected.
-- For v1.6+ text and media: validation-after-mutation is mandatory. Build the structural-invariant checker (`motion_template_validate`) as part of v1.6 work; reuse it in v1.7.
+- For v1.7+ text and media: validation-after-mutation is mandatory. `motion_template_validate` ships in v1.6 first; v1.7 + v1.8 depend on it.
 
-Last reviewed: 2026-05-04 against Motion 6.2 (Creator Studio).
+Last reviewed: 2026-05-05 against Motion 6.2 (Creator Studio) — deep research swarm.

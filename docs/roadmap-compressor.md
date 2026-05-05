@@ -15,49 +15,50 @@ The plan for `compressor_*` tooling. Lives separately from the FCP roadmap becau
 - Real `jobID` + `batchID` parsed out of submission output
 - 6 tests; smoke-proven end-to-end against Compressor 5.2 (HEVC HD encode of a 5s clip)
 
-## Priority order from 2026-05-04 research swarm
+## Roadmap-altering finding from 2026-05-05 deep research swarm
 
-The next concrete adds, in dependency order:
+`Compressor -help` against the local 5.2 bundle exposed **38+ undocumented flags**, including a first-class structured-output channel that rewrites this roadmap:
 
-1. **`compressor_settings_inspect`** — `plutil -convert xml1` + parse for `Name` / `NameKey`. Doubles as `.compressorbatch` schema-reverse prep for v1.3.
-2. **5.2 codec-availability filter** on `compressor_settings_list` — flag presets the host's Compressor will refuse (Blu-ray H.264, Dolby Digital, AVC-Intra-on-Apple-Silicon — silently removed in 5.2). One-shot static list keyed off Compressor version.
-3. **`compressor_status` via cluster storage poll** — `~/Library/Application Support/Compressor/Storage/<UUID>/jobs/` ([discussions.apple.com 5889264](https://discussions.apple.com/thread/5889264)). Pair with `compressor_wait_for_output` as documented fallback.
-4. **`compressor_watch_create` (v1.4)** must include "stable size" pre-flight — Compressor's own watch folder submits partial files for sources >~1min copy time ([macscripter](https://www.macscripter.net/t/watch-folder-for-compressor-droplet-problems/45969)). Poll until file size unchanged for N seconds before submitting.
-5. **Defer `.compressorbatch` authoring (v1.3) until v1.2 lands** — XML parsing infrastructure for read is reusable for write.
-6. **Skip distributed processing (v1.5)** until Mike has a multi-Mac render farm.
+- **`-monitor [-format legacy|xml|json]`** — live batch/job state with `percentComplete`, `timeRemainingSeconds`, `status`, `batchID`, `jobID`. **Live progress is NOT out of scope — Apple ships it today.** The previous "out of scope" line below is removed.
+- **`-info <xml>`** — submit ad-hoc XML job descriptions on the CLI. Strong tell that the `.compressorbatch` schema and the `-monitor` schema share noun identity.
+- **`-kill / -pause / -resume / -jobaction`** — process control on submitted jobs.
+- **`-instances`** — concurrency control across CLI calls.
+- **`-checkstream`, `-findletterbox`** — analytical pre-flight without encoding.
 
-## v1.2 — Human-readable preset names + status
+Cluster-storage file watching (`~/Library/Application Support/Compressor/Storage/<UUID>/`) is **debris, not signal** — those `.qmaster.plist` files are stale-state when batches stall. Demoted to diagnostic-only.
 
-**Apple's bundled presets ship with technical filenames** (`BroadbandHDHEVCNameKey.compressorsetting`, `EFBComputer_HEVC10.compressorsetting`). The user-facing display name lives inside the `.compressorsetting` XML as a `Name` property (or via macOS NameKey resolution against a localized strings table inside the framework). Without this, `compressor_settings_list` is functional but unfriendly.
+`.compressorsetting` is **not a plist** (`plutil -convert xml1` fails). It's a custom XML rooted at `<setting>` with a known schema (codec FourCCs, bitrate, frame size, color tags, base64-bplist `encoder-properties` blob). NameKey resolves against `Localizable.strings` (binary plist) in `CompressorKit.framework/Resources/<lang>.lproj/`.
 
-- **Parse `.compressorsetting` XML** to extract the human display name + format + estimated bitrate. Settings are property-list XML; macOS `defaults read` or `plutil -p` works on them.
-- **`compressor_settings_resolve(name)`** — find a setting by display name across user/system/bundled, returning the path. Lets callers say "Apple Devices HD" and get the right file.
-- **`compressor_settings_inspect(path)`** — dump a structured view of one setting (codec, resolution, bitrate, audio config) for the model to compare presets.
+**Result:** v1.2 + v1.4 + v1.5 from the prior plan collapse into v1.2-v1.3 below. See [`docs/research/2026-05-05-deepswarm/02-compressor-depth.md`](./research/2026-05-05-deepswarm/02-compressor-depth.md) for the full schema reverse-engineering plan and ranked status mechanisms.
 
-**Status / progress:**
+## v1.2 — Live monitoring + settings inspection (Phase 1 of build)
 
-- **`compressor_status`** — list currently-queued / running / completed batches. Compressor exposes batch state via files in `~/Library/Application Support/Compressor/Cluster Storage/` and the AutoSave dir; needs research. Without this, the model has no way to know if an encode is done short of `stat`-ing the output file.
-- **`compressor_wait_for_output(path, timeoutSec)`** — poll for the output file to appear and stabilize (size unchanged for N seconds). Pragmatic fallback while we figure out proper status.
+**The `-monitor` channel is the headline.** Stream first-class progress over MCP `notifications/progress`.
 
-## v1.3 — Multi-job batches
+- **`compressor_monitor_stream({ jobId?, batchId?, intervalSec, timeoutSec })`** — invokes `Compressor -monitor -format json -query <intervalSec>`, parses each frame, emits `StatusFrame` over MCP. **Novel:** turns Compressor into a streaming progress source no other MCP exposes.
+- **`compressor_status({ jobId?, batchId?, format: "json"|"xml", once: true })`** — one-shot wrapper over `-monitor -once`.
+- **`compressor_pause / resume / kill({ jobId?, batchId? })`** — `-jobaction` wrappers.
+- **`compressor_wait_for({ jobId?, batchId?, untilStatus, timeoutSec })`** — convenience that wraps `monitor_stream` and resolves on terminal status.
+- **`compressor_settings_inspect(path, opts)`** — XML-parse `<setting>` root → `{ container, video: { codec, bitrate, w, h, color, profile, level, bitDepth }, audio: { codec, bitrate, channels }, displayName, description }`. NameKey resolution against `Localizable.strings` per locale.
+- **`compressor_settings_resolve(displayName)`** — reverse lookup: "Apple Devices HD" → absolute path.
+- **`compressor_codec_availability()`** — returns `{ available, removed: [{ codec, since, reason }], appleSilicon, version }` keyed off `(arch × Compressor version)`. Then enhances `compressor_settings_list` with `availability: "ok" | "codec-removed" | "arch-incompatible"` so the LLM never picks a preset that will silently fail.
+- **Switch `compressor_encode` submission to `-outputformat json`** — structured submission response, no stdout regex.
 
-Single-job CLI is fine for "encode this one file" but doesn't compose. A real deliverables pipeline encodes one source into multiple outputs (1080p H.264, 4K HEVC, ProRes master, social cut).
+`compressor_wait_for_output` (output-file size stability poll) demoted to **fallback only** for cases without a job/batch ID.
 
-- **`.compressorbatch` authoring** — generate the XML schema Compressor uses to describe a batch (multiple jobs, each with its own setting + location). Schema is undocumented by Apple; reverse-engineer from a batch saved in the GUI.
-- **`compressor_batch_build(spec)`** — JSON spec → `.compressorbatch` file.
-- **`compressor_batch_submit(path)`** — `open -b com.apple.CompressorApp <batch>` handoff. GUI processes the queue.
-- **`compressor_batch_encode(spec)`** — convenience: build → submit → wait for outputs.
+## v1.3 — Batch authoring + watch folders + cluster
 
-This unlocks the deliverables matrix that real productions need.
+Single release; the schema reverse-engineering work for `.compressorbatch` is reusable across all three.
 
-## v1.4 — Watch folders + scheduled encodes
+**Reverse-engineering plan:** generate a 5-batch corpus in the GUI (single-job, multi-output deliverables matrix, annotations+chapters+SCC, custom location with naming tokens, computer-group routed). 5-way `xmllint --format` diff → schema skeleton. Cross-correlate with the live `-monitor xml` schema. Validate by round-trip submit. Document NameKey usage.
 
-- **Watch folder integration** — Compressor watches a directory; new media triggers a configured setting. We can author the watch-folder definition file and stash it in the project's `fcp/` dir.
-- **Scheduled batches** — Compressor's Computer Group + scheduling features for overnight encodes. Lower priority; useful if Mike runs heavy multi-deliverable jobs.
-
-## v1.5 — Distributed processing (deferred — single-machine is enough)
-
-- **`-computergroup`** flag works today but only matters with multiple Compressor cluster nodes. v1.5 catalogs configured groups and exposes them; until Mike has a render farm, this is YAGNI.
+- **`compressor_batch_inspect(path)`** — parse → structured tree.
+- **`compressor_batch_build(spec)`** — JSON spec → `.compressorbatch`. Golden-file-tested per shape in the corpus.
+- **`compressor_batch_submit(path)`** — `open -b com.apple.CompressorApp <path>`.
+- **`compressor_batch_encode(spec)`** — build → submit → monitor (replaces `wait_for_output`).
+- **`compressor_locations_inspect(path)`**, **`compressor_location_build({ folder, filenameFormat, postActions })`**, **`compressor_location_tokens()`** — token catalog for filename-format strings.
+- **`compressor_watch_create({ source, settingPath, locationPath })`** — author Compressor's watch-folder definition file. **In-process stable-size pre-flight** (poll size unchanged for N seconds before submission) sidesteps Apple's broken built-in watch-folder partial-file bug.
+- **`compressor_groups_list()`** — `-computergroup` enumeration. Cluster-aware as soon as Mike has a second Mac; not blocked behind a v1.5 wall.
 
 ## v2.0 — Cross-app composition
 
@@ -71,7 +72,6 @@ Rolls into the broader project's v2.0. Compressor is the "render any deliverable
 ## Out of scope (probably forever)
 
 - **Custom codecs / filters** — Compressor doesn't expose a plugin API for new codecs from CLI. Use ffmpeg if you need something Compressor doesn't have.
-- **Real-time encoding progress percentage** — would require either polling Compressor's plist state files (fragile) or UI scripting (very fragile). Live progress UX is a v2+ research project.
 - **Parallel batch execution from CLI** — Compressor serializes CLI submissions through one queue. For true parallelism, fall back to ffmpeg or run multiple Compressor.app instances (unsupported by Apple).
 - **Direct framework integration** — `Compressor.framework` exists inside the app bundle but Apple has not stabilized a public API.
 
@@ -95,4 +95,4 @@ Compressor wins when you need:
 - Integration: real-encode smoke gates per release. v1.1 baseline is the 5s black HEVC encode that produced 117KB output. Future smokes add a multi-deliverable batch and a watch-folder trigger.
 - Compressor must be open + entitled before integration smokes. A `--require-compressor` flag on the smoke runner enforces this.
 
-Last updated: 2026-05-04 against Compressor 5.2.
+Last updated: 2026-05-05 against Compressor 5.2 (deep research swarm).

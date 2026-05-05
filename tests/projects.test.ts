@@ -24,15 +24,15 @@ afterEach(async () => {
 
 describe("createProject + resolveProject", () => {
   it("creates the standard subdir layout and project.json", async () => {
-    const proj = await createProject("trailer-grounded", {
+    const proj = await createProject("trailer-showcase", {
       kind: "trailer",
       target: { aspect: "16:9", frameRate: "29.97" },
     });
-    expect(proj.meta.name).toBe("trailer-grounded");
+    expect(proj.meta.name).toBe("trailer-showcase");
     expect(proj.meta.kind).toBe("trailer");
-    expect(proj.paths.fcp).toMatch(/trailer-grounded\/fcp$/);
+    expect(proj.paths.fcp).toMatch(/trailer-showcase\/fcp$/);
 
-    const resolved = await resolveProject("trailer-grounded");
+    const resolved = await resolveProject("trailer-showcase");
     expect(resolved.meta.kind).toBe("trailer");
   });
 

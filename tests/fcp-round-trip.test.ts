@@ -65,13 +65,13 @@ describe("parseFcpxml", () => {
           {
             kind: "title",
             name: "MyTitle",
-            text: "Star Freight",
+            text: "the showcase project",
             offsetSeconds: 0,
             durationSeconds: 5,
             lane: 1,
             effectUid: ".../Custom.moti",
             effectName: "Custom",
-            params: [{ name: "Headline", key: "200", value: "Star Freight" }],
+            params: [{ name: "Headline", key: "200", value: "the showcase project" }],
           },
         ],
       },
@@ -82,9 +82,9 @@ describe("parseFcpxml", () => {
     const title = parsed.spine.find((s) => s.kind === "title");
     expect(title).toBeDefined();
     if (title?.kind !== "title") throw new Error("not a title");
-    expect(title.text).toBe("Star Freight");
+    expect(title.text).toBe("the showcase project");
     expect(title.params).toHaveLength(1);
-    expect(title.params[0]).toMatchObject({ name: "Headline", key: "200", value: "Star Freight" });
+    expect(title.params[0]).toMatchObject({ name: "Headline", key: "200", value: "the showcase project" });
   });
 
   it("throws E_FCPXML_PARSE_FAILED for non-XML", () => {

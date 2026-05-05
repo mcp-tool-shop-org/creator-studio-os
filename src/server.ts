@@ -14,7 +14,7 @@ import { registerStatusTool } from "./apps/status-tool.js";
 async function main() {
   const server = new McpServer({
     name: "creator-studio-os",
-    version: "1.6.1",
+    version: "1.6.3",
   });
 
   registerFcpTools(server);

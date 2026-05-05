@@ -21,16 +21,6 @@ The big picture for `fcp_*` tooling. Lives separately from the cross-app roadmap
 
 11 builder tests covering each new feature. Real-FCP smoke test verified DTD round-trip + import.
 
-## v1.2 — Anchored items, multicam, compound clips
-
-The shape of "real" timelines:
-
-- **Anchored clips** — B-roll, lower thirds, sound effects attached to a primary spine item. The `%anchor_item` entity from the DTD.
-- **Connected storylines** — secondary spines anchored to a primary clip.
-- **Multicam clips** (`mc-clip`) — one timeline reference to a multi-angle source.
-- **Compound clips** (`ref-clip`) — nest a sequence inside a sequence. Common building block for templated edits.
-- **Captions** — basic subtitle / closed-caption authoring via the `caption` element.
-
 ## v1.3 — Adjustments, effects, color
 
 Per-clip transformations:
@@ -61,16 +51,70 @@ FCP exposes no AppleScript `share` command. Three viable paths, in order of clea
 
 Path #1 is the right answer. This milestone lands once both FCP and Compressor wings are mature.
 
-## Priority recommendations from 2026-05-04 research swarm
+## Roadmap-altering findings from 2026-05-05 deep research swarm
 
-Worth interleaving into v1.2-v1.5 work as cheap interop wins:
+The 2026-05-05 swarm enumerated **12 silent-transformation pitfalls** FCP applies on import — a checklist for the round-trip diff tool. See [`docs/research/2026-05-05-deepswarm/01-fcp-depth.md`](./research/2026-05-05-deepswarm/01-fcp-depth.md) for full DTD verbatim shapes, parser strategy, and OTIO bridge plan.
 
-- **`fcp_validate_compound_safety`** — pre-flight tool that flags whether a `ProjectSpec` contains compounds that won't survive round-trip ([Blackmagic forum on compound multiplication](https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=40534)). Ship before v1.2 compound authoring so users don't ship lossy edits unaware.
-- **Bundle a 1.13 fallback profile** — `targetVersion: "1.13" | "1.14"` field on the builder. [DareDev256/fcpxml-mcp-server](https://github.com/DareDev256/fcpxml-mcp-server) caps at 1.11; OTIO + Pipeline-Neo + Resolve consumers commonly want 1.13. Schema diff is small, cost near-zero.
-- **OTIO export adapter** — when v1.4 parser lands, expose `fcp_export_otio` via [`otio-fcpx-xml-lite-adapter`](https://pypi.org/project/otio-fcpx-xml-lite-adapter/). Positions us as the only MCP that reads FCP and writes to Resolve / Premiere paths cleanly.
-- **`fcp_audit_roles`** — given dotted role serialization (`"dialogue.Mix"` rather than nested), a tool that walks the spine and reports role coverage / orphans is one-day work. High signal for anyone wiring Logic stems back into FCP.
+**Confirmed pitfalls:**
+1. Magnetic Mask data dropped (FCPXML 1.13/1.14, [fcp.cafe news 2024-11-13](https://fcp.cafe/news/20241113/))
+2. Position keyframes silently rejecting `interp` / `curve` attributes
+3. Captions without a `role` attribute silently dropped
+4. `mc-clip` flattened to N compounds on third-party round-trip
+5. `ref-clip` with format mismatch → silent `conform-rate` insertion
+6. `audition` with non-canonical pick order → first-child normalised
+7. Two ref-clips sharing one media id → propagated edit on save
+8. Lane collisions silently re-bucketed
+9. Stills (PNG/JPEG) can crash FCP on import — convert to short MOV
+10. Effect UID drift across FCP versions (same display name, different UID)
+11. `adjust-color` element ordering inside `%intrinsic-params;` is DTD-enforced — out-of-order = xmllint validation fail
+12. Locale-dependent param `name` on Motion-published parameters — always emit `key` alongside `name`
 
-## v1.6 — Generators and backgrounds
+**Confirmed format facts:** No FCPXML 1.15 yet (FCP 12.0–12.2 ships 1.14). `.fcpbundle` internals are volatile DeepSkyLite Core Data — ship a list-only tool via FCP-mediated XML export, never a writer. `.fcpxmld` (bundle directory with `info.fcpxml`) is tractable.
+
+## Priority adds from the swarm (folded into v1.6+)
+
+- **`fcp_round_trip_diff`** (flagship novel tool) — author → import → re-export → typed diff. **No other FCP MCP, no Pipeline Neo, no OTIO adapter does this.** Detects the 12 transformations as a regression suite. Promoted to v1.6.
+- **`fcp_effects_catalog`** — bundle-walk `~/Movies/Motion Templates.localized/`, `/Library/Application Support/Motion/Templates.localized/`, FCP bundled effects → JSON catalog of every Title / Generator / Effect / Transition installed with display name + UID + bundle source. The first JIT capability resource (host-aware). Promoted to v1.6.
+- **`fcp_validate_compound_safety`** — pre-flight on `ref-clip` / `media>sequence` shapes. Promoted to v1.6.
+- **`fcp_caption_lint`** — pre-flight to validate every `<caption>` has a recognised `role`.
+- **`fcp_anchor_safety`** — pre-flight on lane collisions and same-time anchored overlaps.
+- **`fcp_bind_motion_param`** — given a Motion `.moti` path, list its published params; bind values into a `<title>` / `<generator>` spec. **Pairs with v1.5 OZML mutation + v1.6 motion_publish_to_fcp** — the killer chain.
+- **`fcp_audit_roles`** — walk parsed spine, report role coverage / orphans / collisions. One-day work. High signal for Logic-stem wiring.
+- **`targetVersion: "1.13" | "1.14"`** field on the builder — small diff, near-zero cost. OTIO + Pipeline Neo + Resolve consumers commonly want 1.13.
+- **OTIO bridge in native TS** — port `otio-fcpx-xml-lite-adapter` (~1500 LoC Python) to TypeScript. csos becomes the cleanest agent-driven path from FCP → OTIO → Resolve / Premiere / AAF. Zero Python dependency.
+
+## v1.6 — Round-trip diff + JIT effects catalog + safety pre-flights (Phase 1 of build)
+
+The cheapest swarm-surfaced wins. Each unlocks downstream work.
+
+- `fcp_round_trip_diff` — flagship.
+- `fcp_effects_catalog` — first JIT capability resource.
+- `fcp_validate_compound_safety` — pre-flight pre-compound-authoring.
+- `fcp_caption_lint`, `fcp_anchor_safety` — silent-failure catchers.
+- `fcp_bind_motion_param` — cross-app composition glue (pairs with `motion_publish_to_fcp` in same release).
+- Builder gains `targetVersion` field.
+
+## v1.7 — Anchored items, multicam, compound clips
+
+The shape of "real" timelines. v1.6's `fcp_validate_compound_safety` is the pre-flight gate; this release does the authoring.
+
+- **Anchored clips** — B-roll, lower thirds, sound effects attached to a primary spine item. The `%anchor_item` entity from the DTD.
+- **Connected storylines** — secondary spines anchored to a primary clip.
+- **Multicam clips** (`mc-clip`) — one timeline reference to a multi-angle source.
+- **Compound clips** (`ref-clip`) — nest a sequence inside a sequence. Common building block for templated edits.
+- **Captions** — basic subtitle / closed-caption authoring via the `caption` element. Pre-flighted by v1.6 `fcp_caption_lint`.
+
+## v1.8 — Parser + OTIO bridge
+
+The read direction. Pairs with v1.6's `fcp_round_trip_diff` (which depends on a parser) and unlocks v2.0 protocols that need to know what's already in a project.
+
+- `fcp_parse_fcpxml` — `.fcpxml` (and `.fcpxmld`'s `info.fcpxml`) → `ProjectSpec` + `ParsedExtras`. `fast-xml-parser` with `preserveOrder: true`. Forward-compatible: surface unknown elements, never fail.
+- `fcp_export_otio` / `fcp_import_otio` — native TS port of `otio-fcpx-xml-lite-adapter`. Zero Python dependency.
+- `fcp_extract_library` — `.fcpbundle` listing via FCP-mediated XML export (NOT raw flexolibrary parse).
+- `fcp_audit_roles` — role coverage / orphans / collisions on a parsed spine.
+- `fcp_feature_soup` — golden fixture exercising every shipped element. Regression on every csos release; doubles as a public FCP-version probe.
+
+## v1.9 — Generators and backgrounds
 
 - `generator` references (color generators, gradient backgrounds, looping backgrounds for vertical / square aspects)
 - Default backgrounds for letterboxed / pillarboxed exports

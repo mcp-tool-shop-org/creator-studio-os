@@ -12,18 +12,37 @@ Plan for the `keynote_*`, `pages_*`, and `numbers_*` wings. All three apps share
 
 Smoke-proven against real apps: each app `make new document` → export to PDF in ~0.7-0.8s.
 
-## Where we sit vs the field (per 2026-05-04 research swarm)
+## Roadmap-altering findings from 2026-05-05 deep research swarm
 
-- [`reichenbach/iwork_mcp`](https://github.com/reichenbach/iwork_mcp) ships **41 Keynote tools + 113 across iWork** including slide authoring, theme swap, batch 2D table writes, formulas, charts. **The bar.** v0.8.6 (2026-02-15), JXA-based.
-- [`ByAxe/keynote-mcp`](https://github.com/ByAxe/keynote-mcp) ships ~30 Keynote tools incl. Unsplash integration.
+The 2026-05-05 swarm dumped the full Keynote 15.2 sdef (1,287 lines), Numbers 15.2 sdef, and Pages 15.2 sdef. Findings:
+
+**Keynote sdef is RICHER than [reichenbach/iwork_mcp](https://github.com/reichenbach/iwork_mcp) exploits.** reichenbach misses sdef-native facts:
+- `add chart` accepts row names + column names + data + type + group-by directly (he creates blank charts and walks them)
+- `make image slides` is an Apple-bundled bulk-image-deck compound
+- 43 named transition effects (not the 22 he documents)
+- Full `transition properties` record (effect + delay + duration + automatic)
+- Advanced PDF export (password, handouts, image quality)
+- Movie codec ladder (h264/HEVC/ProRes/ProRes422/4444)
+- 1024×768 vs 1920×1080 doc size, kiosk-mode (auto play/loop/restart), VoiceOver `description` on images, presenter notes as `rich text` (per-paragraph stylable)
+
+**Chart class is empty on Numbers AND Pages** — `add chart` works, but **chart styling is genuinely impossible via AppleScript** (no titles/labels/colors). UI-scripting only. Document the ceiling honestly.
+
+**Headless `.numbers` lane:** [`numbers-parser`](https://pypi.org/project/numbers-parser/) (pure-Python, snappy-protobuf) is the only path. **No pure-JS alternative exists.** Ship a Python sidecar (subprocess + JSON bridge, ~150ms cold start vs osascript's 400ms).
+
+See [`docs/research/2026-05-05-deepswarm/06-keynote-depth.md`](./research/2026-05-05-deepswarm/06-keynote-depth.md) and [`07-pages-numbers-depth.md`](./research/2026-05-05-deepswarm/07-pages-numbers-depth.md) for full sdef catalogues.
+
+## Competitive landscape (refreshed 2026-05-05)
+
+- [`reichenbach/iwork_mcp`](https://github.com/reichenbach/iwork_mcp) — 41 Keynote tools + 113 across iWork. The bar. v0.8.6 (2026-02-15), JXA-based.
+- [`ByAxe/keynote-mcp`](https://github.com/ByAxe/keynote-mcp) — ~30 Keynote tools incl. Unsplash integration.
 - [`alexlock1/apple-numbers-mcp`](https://github.com/alexlock1/apple-numbers-mcp) — 8 narrow Numbers tools.
 - No dedicated Pages MCP server exists — only skill-form prior art.
 
-We're behind on Keynote authoring + Numbers data manipulation. The strategic moat is cross-app composition (iWork ↔ FCP / Compressor / Motion) which none of the competitors offer.
+**Strategic shift:** csos targets **45 Keynote tools** in v1.5 (28 parity + 8 sdef-depth + 5 cross-app composition). Net **leapfrog**, not parity. Cross-app composition (iWork ↔ FCP / Compressor / Motion) is the moat — `keynote_to_storyboard_fcp`, `keynote_to_compressor_gif`, `keynote_slide_to_motion_template`, `keynote_plan_magic_move`, `keynote_from_markdown` are all uniquely csos.
 
-## v1.5 — Keynote authoring (highest priority, closes the iwork_mcp gap)
+## v1.5 — Keynote leapfrog — 45 tools (28 parity + 8 sdef-depth + 5 cross-app)
 
-Pattern: md2key-style master mapping (`cover` / `h1` / `h2` / ...) is the high-leverage entry. Drop a markdown doc, get a Keynote deck.
+Pattern: md2key-style master mapping (`cover` / `h1` / `h2` / ...) is the high-leverage entry. Drop a markdown doc, get a Keynote deck. **Cross-app composition tools (`keynote_to_*`) are the strategic moat — no Keynote MCP competitor ships these.**
 
 - `keynote_make_slide(documentName, masterName?, after?)` — returns slide id; foundational for everything below
 - `keynote_set_slide_master(documentName, slideIndex, masterName)` — apply master to existing slide (theme-swap composability)
@@ -38,7 +57,9 @@ Pattern: md2key-style master mapping (`cover` / `h1` / `h2` / ...) is the high-l
 
 Defer: charts (sdef incomplete), audio clips (Motif handles audio elsewhere), presenter mode control (not authoring).
 
-## v1.6 — Numbers data manipulation (matches reichenbach baseline)
+## v1.6 — Numbers data manipulation — 16 tools
+
+Charts: creation works, **styling is impossible via AppleScript**. Document the ceiling. Pair with v1.8 Python sidecar for headless bulk data injection.
 
 - `numbers_write_table(documentName, sheetIndex, tableIndex, data2D)` — 2D bulk write, sdef-supported, the highest-leverage tool. osascript startup is ~400ms so bulk-write is mandatory for batch work.
 - `numbers_set_formula(documentName, sheetIndex, tableIndex, cellRef, formula)` — formulas are write-only (you can write `"=SUM(B2:B10)"` but reading it back returns the computed value, not the formula text). Track formulas in caller state.
@@ -63,13 +84,16 @@ Defer: chart styling (UI scripting only), Apple Intelligence "magic fill" (UI de
 
 Defer: headers/footers (sdef coverage is partial), page-layout text boxes, RTF export refinement.
 
-## v1.8 — Numbers headless lane (no app launch)
+## v1.8 — Numbers headless lane (Python sidecar)
 
-[`numbers-parser`](https://pypi.org/project/numbers-parser/) is a pure-Python read/write of `.numbers` files **without launching Numbers**. Tested through Numbers Creator Studio 15.1. Wins on speed + headless CI.
+[`numbers-parser`](https://pypi.org/project/numbers-parser/) is the **only** read/write of `.numbers` files **without launching Numbers** (snappy-protobuf, no pure-JS port exists). Tested through Numbers Creator Studio 15.1.
+
+**Architecture:** Python subprocess + JSON bridge over stdin/stdout. ~150ms cold start vs AppleScript's 400ms; wins on speed and headless CI.
 
 - `numbers_file_read(path)` — protobuf parse, return tables / cells / values
 - `numbers_file_write_cells(path, sheetName, tableName, cellUpdates)` — direct file mutation
 - `numbers_file_create_from_json(path, schema)` — generate a `.numbers` from JSON spec, no Numbers.app
+- `numbers_file_diff(pathA, pathB)` — JSON-patch between two `.numbers` documents (frontier feature, slice §13)
 
 Coexist with the AppleScript path; AppleScript stays canonical for live-doc editing, parser for bulk data injection.
 
@@ -94,4 +118,4 @@ iWork's role in `protocol.*`:
 - Maintain the document-name extension-stripping invariant — `iwork/shared.ts` already queries `name of front document` after open, never infers from path.
 - Watch for osascript startup cost in batch tests — bundle compound ops, don't loop one-tool-per-call.
 
-Last reviewed: 2026-05-04 against Keynote / Pages / Numbers 15.2 (Creator Studio).
+Last reviewed: 2026-05-05 against Keynote / Pages / Numbers 15.2 (Creator Studio) — deep research swarm with full sdef reads.

@@ -29,5 +29,10 @@
   { "query": "run a Pixelmator Shortcuts action to remove background from a portrait photo", "target_tool": "pixelmator_run_shortcut" },
   { "query": "detect faces in an open Pixelmator document", "target_tool": "pixelmator_detect" },
   { "query": "find and replace text across all text layers in Pixelmator", "target_tool": "pixelmator_replace_text" },
-  { "query": "swap the image in a Pixelmator template layer while keeping its effects", "target_tool": "pixelmator_replace_layer" }
+  { "query": "swap the image in a Pixelmator template layer while keeping its effects", "target_tool": "pixelmator_replace_layer" },
+  { "query": "export a Pixelmator document as HDR HEIC for Display P3", "target_tool": "pixelmator_export_hdr" },
+  { "query": "export an animated GIF from a Pixelmator video document", "target_tool": "pixelmator_export_animated" },
+  { "query": "export a Pixelmator document as an optimized WebP for the web", "target_tool": "pixelmator_export_for_web" },
+  { "query": "export a Pixelmator document as an MP4 video file", "target_tool": "pixelmator_export_video" },
+  { "query": "compose a brand card with logo and headline at multiple sizes from a template", "target_tool": "pixelmator_compose_brand_card" }
 ]

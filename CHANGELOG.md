@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] — 2026-05-05
+
+### Added (Phase 2.1 — Pixelmator full sdef)
+
+**22 new Pixelmator Pro MCP tools (+1 smoke Phase 0 health pre-flight):**
+
+- **2.1.1 Layer authoring (7 tools):** `pixelmator_make_layer` (image/text/shape), `pixelmator_set_layer_properties` (visibility/opacity/blend mode/position/size), `pixelmator_layer_order` (front/back/before/after), `pixelmator_group_layers`, `pixelmator_ungroup`, `pixelmator_set_layer_text` (font/size/color/alignment), `pixelmator_make_shape` (rectangle/rounded-rectangle/ellipse/line with fill+stroke).
+- **2.1.2 Blend modes + layer styles (3 tools):** `pixelmator_set_blend_mode` (all 28 sdef blend modes), `pixelmator_set_layer_shadow`, `pixelmator_set_layer_stroke`.
+- **2.1.3 Effects + color adjustments (2 tools):** `pixelmator_apply_effect` (23 Pixelmator Pro effect classes), `pixelmator_apply_color_adjustment` (24 color-adjustment properties including custom LUT; non-destructive mode supported).
+- **2.1.4 ML + Shortcuts bridge (2 tools):** `pixelmator_apply_ml` (11 algorithms: super_resolution with exact-dimension resize, enhance, denoise, deband, match_colors, remove_background, select_subject, 4× auto-adjust), `pixelmator_run_shortcut` (Shortcuts.app bridge — reaches ML knobs the sdef can't, e.g. portrait background removal).
+- **2.1.5 Detect + replace (3 tools):** `pixelmator_detect` (face bounding boxes + QR decoded message payload), `pixelmator_replace_text` (sdf `replace` across all text layers), `pixelmator_replace_layer` (swap image layer content while preserving adjustments/effects/styles).
+- **2.1.6 HDR + advanced exports (5 tools):** `pixelmator_export_hdr` (HDR JPEG/HEIC/AVIF/PNG — auto-enables `display hdr content`), `pixelmator_export_video` (MP4/QuickTime Movie), `pixelmator_export_animated` (Animated GIF/PNG), `pixelmator_export_for_web` (web-optimized PNG/JPEG/WebP/GIF/SVG with scale+sRGB options). Also exports PSD (via existing `pixelmator_export`).
+- **2.1.7 Brand-card composer (1 tool):** `pixelmator_compose_brand_card` — reads brand tokens (logo, headline, subhead, tagline), opens a `.pxd` template, replaces `{{HEADLINE}}`/`{{SUBHEAD}}`/`{{TAGLINE}}`/`{{LOGO}}` slots, exports at each requested size (PNG or HDR PNG). First protocol primitive for `protocol.steam_trailer_minimal` step 2.
+
+**Supporting modules:** `src/apps/pixelmator/{blendModes,layers,styles,effects,ml,detect,brandCard}.ts`
+
+**Smoke harness:** Phase 0 health pre-flight (`src/smoke/phases/p0-app-health.ts`) — runs `csos_app_status` for required apps before real-app phases; phases that depend on an unhealthy app surface as `skip` (not `fail`), keeping the smoke signal honest.
+
+### Internal
+
+- 274 unit tests (was 205) — 6 new test files: `pixelmator-layers`, `pixelmator-effects-ml-detect`, `pixelmator-hdr-exports`, `pixelmator-brand-card`, `smoke.test.ts` gained Phase 0 tests.
+- 23 tool-compass intent fixtures added to `tests/fixtures/toolcompass-queries.json` (21 Pixelmator + 2 app-status from v1.6.2).
+- Total: **101 MCP tools** (was 79).
+
 ## [1.6.2] — 2026-05-05
 
 ### Added (Phase 2.0 — Foundation infrastructure)

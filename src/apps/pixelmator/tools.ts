@@ -29,6 +29,13 @@ import { setBlendMode, setLayerShadow, setLayerStroke } from "./styles.js";
 import { EFFECT_CLASSES, applyEffect, COLOR_ADJUSTMENT_PROPS, applyColorAdjustments } from "./effects.js";
 import { ML_ALGORITHMS, applyMl, runShortcut } from "./ml.js";
 import { detectInDocument, replaceText, replaceLayerImage } from "./detect.js";
+import {
+  HDR_FORMATS, exportHdr,
+  VIDEO_FORMATS, exportVideo,
+  ANIMATED_FORMATS, exportAnimated,
+  WEB_FORMATS, exportForWeb,
+} from "./document.js";
+import { composeBrandCard } from "./brandCard.js";
 
 function ok<T>(value: T) {
   return {
@@ -241,6 +248,118 @@ export function registerPixelmatorTools(server: McpServer) {
       } catch (e) {
         return err(e);
       }
+    },
+  );
+
+  // ── 2.1.6 HDR + advanced exports ─────────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_export_hdr",
+    "Export an open Pixelmator document to an HDR image file. Supports HDR JPEG, HDR HEIC, HDR AVIF, and HDR PNG. Automatically enables Pixelmator's HDR content display mode before export — without this, Pixelmator silently tone-maps to SDR.",
+    {
+      documentName: z.string(),
+      outputPath: z.string().describe("Absolute POSIX output path"),
+      format: z.enum(HDR_FORMATS),
+      compressionFactor: z.number().int().min(1).max(100).optional().describe("Quality 1–100 for JPEG/HEIC/AVIF"),
+      colorProfile: z.string().optional().describe("Color profile name e.g. \"Display P3\""),
+    },
+    async ({ documentName, outputPath, format, compressionFactor, colorProfile }) => {
+      try {
+        await exportHdr({ documentName, outputPath, format, compressionFactor, colorProfile });
+        return ok({ exported: outputPath, format });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_export_video",
+    "Export an open Pixelmator document containing video layers to MP4 or QuickTime Movie format. Optionally set the output frame rate.",
+    {
+      documentName: z.string(),
+      outputPath: z.string(),
+      format: z.enum(VIDEO_FORMATS),
+      frameRate: z.number().positive().optional().describe("Output frame rate (frames per second)"),
+    },
+    async ({ documentName, outputPath, format, frameRate }) => {
+      try {
+        await exportVideo({ documentName, outputPath, format, frameRate });
+        return ok({ exported: outputPath, format });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_export_animated",
+    "Export an open Pixelmator document as Animated GIF or Animated PNG. Suitable for short looping sequences. Optionally set the output frame rate.",
+    {
+      documentName: z.string(),
+      outputPath: z.string(),
+      format: z.enum(ANIMATED_FORMATS),
+      frameRate: z.number().positive().optional().describe("Frame rate in frames per second"),
+    },
+    async ({ documentName, outputPath, format, frameRate }) => {
+      try {
+        await exportAnimated({ documentName, outputPath, format, frameRate });
+        return ok({ exported: outputPath, format });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_export_for_web",
+    "Export an open Pixelmator document using Pixelmator Pro's Export For Web command. Produces a web-optimized PNG, JPEG, WebP, GIF, or SVG with optional quality, scale, and sRGB conversion settings.",
+    {
+      documentName: z.string(),
+      outputPath: z.string(),
+      format: z.enum(WEB_FORMATS),
+      compressionFactor: z.number().int().min(1).max(100).optional().describe("Quality 1–100 for JPEG/WebP"),
+      scale: z.number().int().positive().optional().describe("Integer scale factor (1, 2, 3…)"),
+      convertToSRGB: z.boolean().optional(),
+      keepTransparency: z.boolean().optional(),
+    },
+    async ({ documentName, outputPath, format, compressionFactor, scale, convertToSRGB, keepTransparency }) => {
+      try {
+        await exportForWeb({ documentName, outputPath, format, compressionFactor, scale, convertToSRGB, keepTransparency });
+        return ok({ exported: outputPath, format });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  // ── 2.1.7 Brand-card composer ─────────────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_compose_brand_card",
+    "Compose a layered brand card from brand tokens and export at multiple sizes. Opens a .pxd template, replaces {{HEADLINE}}, {{SUBHEAD}}, {{TAGLINE}} text placeholders and {{LOGO}} image layer with the supplied brand tokens, then exports each requested size as PNG (or HDR PNG). First protocol primitive — used by protocol.steam_trailer_minimal step 2.",
+    {
+      brand: z.object({
+        headline: z.string().optional().describe("Main headline text"),
+        subhead: z.string().optional().describe("Sub-headline text"),
+        tagline: z.string().optional().describe("Tagline text"),
+        logoPath: z.string().optional().describe("Absolute POSIX path to logo image"),
+        headlineFont: z.string().optional().describe("PostScript font name for headline layer"),
+        primaryColor: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("[r,g,b] primary brand color 0-255"),
+      }),
+      sizes: z.array(z.object({
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+        label: z.string().optional().describe("Output file suffix label e.g. \"1080p\""),
+      })).min(1),
+      outputDir: z.string().describe("Absolute POSIX path to output directory"),
+      templatePath: z.string().optional().describe("Absolute POSIX path to .pxd template (defaults to shared/brand/card-template.pxd)"),
+      stem: z.string().optional().describe("Base filename stem (default: brand-card)"),
+      hdr: z.boolean().default(false).describe("Export as HDR PNG instead of standard PNG"),
+    },
+    async ({ brand, sizes, outputDir, templatePath, stem, hdr }) => {
+      try {
+        const result = await composeBrandCard({
+          brand: {
+            ...brand,
+            primaryColor: brand.primaryColor as [number, number, number] | undefined,
+          },
+          sizes, outputDir, templatePath, stem, hdr,
+        });
+        return ok(result);
+      } catch (e) { return err(e); }
     },
   );
 

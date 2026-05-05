@@ -10,16 +10,30 @@ Plan for the `pixelmator_*` wing. Pixelmator has the richest AppleScript surface
 - Smoke-proven end-to-end against Pixelmator Pro 4.2 (Creator Studio): open 2560x1440 PNG → resize to 1920x1080 → export as WebP
 - Caught + documented the **extension-stripping quirk** (Pixelmator names a document by stem, not by filename)
 
-## Priority adds from 2026-05-04 research swarm
+## Roadmap-altering finding from 2026-05-05 deep research swarm
 
-Beyond the staged v1.4-v1.7 plan below, the swarm surfaced these high-leverage adds:
+The 2026-05-05 swarm read the **full 3,044-line `PixelmatorPro.sdef`** directly from the bundle. The surface is **4× richer** than v1.3's 11 tools surface. See [`docs/research/2026-05-05-deepswarm/03-pixelmator-depth.md`](./research/2026-05-05-deepswarm/03-pixelmator-depth.md) for the full sdef catalog.
 
-1. **`pixelmator_run_shortcut`** — bridge to Shortcuts.app via `shortcuts run "<name>"` CLI. Picks up Apple-only ML knobs (portrait background removal, image upscale, color match) the sdef alone doesn't expose. The 28 Pixelmator Shortcuts actions are partially Shortcuts-only.
-2. **`pixelmator_apply_ml`** — typed surface for the ML algorithm enum (`ml super resolution`, `ml enhance`, `ml denoise`, `ml match colors`, `ml crop`, `ml remove background`). Already partially reachable via existing `resize` / effect verbs with an algorithm parameter; worth a dedicated surface for discoverability.
-3. **`pixelmator_replace_text`** + **`pixelmator_replace_layer`** — sdef-native commands we don't expose yet. Massive value for game-asset templating (Star Freight UI mock variants, Saint's Mile chapter cards).
-4. **`pixelmator_detect`** — face / QR / barcode detection. Already in the sdef, low effort, surfaces ML data extraction (sprite-sheet metadata).
-5. **Sdef-diff harness** — scripted `sdef /Applications/Pixelmator\ Pro.app` snapshot per release into `docs/reference/sdef-snapshots/` + diff report on each Pixelmator update. Catches the next undocumented Apple change automatically.
-6. **Port the [Late Night Software AppleScript library](https://forum.latenightsw.com/t/i-made-a-pixelmator-pro-library/2712) blend-mode enum** — 27+ blend modes, Apple-blessed reference. `pixelmator_set_layer_style` v1 = blend modes + shadows / strokes / fills.
+**Catalogued surface:**
+- **22 export formats** including 4 HDR variants csos hasn't surfaced (HDR JPEG / HEIC / AVIF / PNG, OpenEXR, MP4/QuickTime video, animated PNG/GIF, Motion-project handoff)
+- **27 Apple-blessed blend modes** (csos uses zero)
+- **23 Effect classes** (gaussian / box / disc / motion / zoom / spin / tilt-shift / focus / bump / pinch / circle-splash / hole / light-tunnel / twirl / vortex / pixelate / pointillize / crystallize / checkerboard / stripes / color-fill / image-fill / pattern-fill)
+- **24 color-adjustment properties** including custom-LUT in/out
+- **sdef-native `replace`, `replace image`, `detect face`, `detect QR code`** (with decoded message payload)
+- **28 Pixelmator Shortcuts actions** — partially Shortcuts.app-only (portrait background removal, image upscale, color match)
+
+The `export options` record is mostly readable from the sdef directly — only 4 properties; the truly hidden bits live in `export for web options` and Shortcuts.app actions. **Roadmap shape:** v1.4 expands from "layer authoring + text" to **full sdef coverage** (~25+ new tools).
+
+## Priority adds (folded into v1.4+)
+
+1. **`pixelmator_run_shortcut`** — bridge to Shortcuts.app via `shortcuts run "<name>"` CLI. Picks up the Apple-only ML knobs the sdef alone doesn't expose.
+2. **`pixelmator_apply_ml`** — typed surface for the ML algorithm enum (`ml super resolution`, `ml enhance`, `ml denoise`, `ml match colors`, `ml crop`, `ml remove background`).
+3. **`pixelmator_replace_text`** + **`pixelmator_replace_layer`** — sdef-native commands. Massive value for game-asset templating (the showcase project UI mock variants, another operator project chapter cards).
+4. **`pixelmator_detect`** — face / QR / barcode detection. Sprite-sheet metadata extraction.
+5. **Sdef-diff harness** — scripted `sdef /Applications/Pixelmator\ Pro.app` snapshot per release into `docs/reference/sdef-snapshots/` + diff report on each Pixelmator update.
+6. **27 blend modes** from the [Late Night Software library](https://forum.latenightsw.com/t/i-made-a-pixelmator-pro-library/2712). `pixelmator_set_layer_style` = blend modes + shadows / strokes / fills.
+7. **HDR exports** (HDR JPEG / HEIC / AVIF / PNG) — csos becomes the first MCP shipping HDR Pixelmator exports.
+8. **Effect verbs** — one tool per effect class or a single `pixelmator_apply_effect(class, params)` dispatch. The 23 sdef-native effects.
 
 ## v1.4 — Layer authoring + text
 
@@ -91,4 +105,4 @@ Each protocol reads `project.json` (target deliverable + brand tokens + canon re
 - Unit tests on AppleScript snippet generation (escapeAppleScriptString coverage, command parameter formatting).
 - Format coverage smoke: export the same source to all 10 formats, verify each output exists and is non-empty.
 
-Last reviewed: 2026-05-04 against Pixelmator Pro 4.2.
+Last reviewed: 2026-05-05 against Pixelmator Pro 4.2 — deep research swarm with full sdef read.

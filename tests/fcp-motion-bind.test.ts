@@ -135,14 +135,14 @@ describe("buildProjectFcpxml — TitleSpec.params", () => {
           effectUid: ".../Custom.localized/Custom.moti",
           effectName: "Custom",
           params: [
-            { name: "Headline", key: "200", value: "Star Freight" },
+            { name: "Headline", key: "200", value: "the showcase project" },
             { name: "Subtitle", key: "201", value: "A space merchant RPG" },
           ],
         },
       ],
     });
 
-    expect(result.xml).toContain('<param name="Headline" key="200" value="Star Freight"/>');
+    expect(result.xml).toContain('<param name="Headline" key="200" value="the showcase project"/>');
     expect(result.xml).toContain('<param name="Subtitle" key="201" value="A space merchant RPG"/>');
   });
 

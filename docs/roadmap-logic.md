@@ -21,16 +21,34 @@ We unlock new milestones on any of these external events:
 
 Until one of those, v1.3 is the ceiling for `logic_*`.
 
-## Concrete next adds (per 2026-05-04 research swarm)
+## Roadmap-confirming findings from 2026-05-05 deep research swarm
 
-The swarm confirmed: **don't follow the keystroke-MCP route** that `koltyj/logic-pro-mcp` and `che-logic-pro-mcp` take. Lean into what fits creator-studio-os's "operator's workbench" position. In priority order:
+The 2026-05-05 swarm verified Logic 12.2 still exposes zero programmatic surface in 2026 — no sdef, no CLI, no public schema. **The around-Logic position holds.** See [`docs/research/2026-05-05-deepswarm/04-logic-depth.md`](./research/2026-05-05-deepswarm/04-logic-depth.md) for full plist key catalog.
 
-1. **`logic_project_inspect`** — read-only `.logicx` plist parsing. Read `Alternatives/*/Metadata/`, `ProjectInformation`, sample-rate / tempo / length / track count / plugin manifest. **Skip the `ProjectData` binary** (undocumented, version-volatile, EULA-adjacent). ~80% of "what's in this session" answers without reversing anything.
-2. **`logic_watch_bounces`** — fsevents on a configured bounce-output directory; emit MCP events when a bounce lands so downstream Compressor / FCP automation chains kick in. This is the Motif-cue-auditioning loop Mike actually does.
-3. **`logic_sidecar_write`** — write a sibling `.json` next to a `.logicx` (cue name, scene tag, motif family, take notes). Pairs with Motif's score-map; lets human-driven Logic sessions leave structured breadcrumbs for the rest of csos.
-4. **`logic_iac_send`** — thin wrapper over CoreMIDI virtual port + IAC bus to send transport (MMC) and notes / CC. Same surface as [sandst1/mcp-server-midi](https://github.com/sandst1/mcp-server-midi) but scoped tightly so we don't pretend it's "control."
+**Confirmed parseable `.logicx` plist surface** (verified via `plutil` against sample plists):
+- `ProjectInformation.plist` — `BundleVersion`, `HasProjectFolder`, `LastSavedFrom`, `VariantNames`, `projectAssetFlags`. Shallow.
+- `MetaData.plist` (per-Alternative) — file inventory: Audio / Sampler / IR / Video / Ultrabeat / Unused arrays.
+- `DisplayState.plist` — screensets + panel state.
+- **`Alternatives/NNN/WindowImage.jpg`** — per-Alternative cover thumbnail. **Real JPEG no competitor exposes.**
+
+**Confirmed unsafe / off-limits:** Tempo, time-signature, markers, tracks, plugins all live in `ProjectData` — binary, undocumented, EULA-adjacent. Don't parse.
+
+**MCP transport confirmed:** `resources/subscribe` + `notifications/resources/updated` is the right transport for `logic_watch_bounces`. Watcher: `chokidar` (uses native fsevents on macOS).
+
+**MIDI library decision:** `easymidi` over `node-midi` over `RtMidi`. Virtual port creation works; install needs node-gyp but prebuilt arm64 binaries usually available.
+
+**Keystroke-route rejection confirmed:** `koltyj/logic-pro-mcp` and `che-logic-pro-mcp` are locale-fragile, AX-permission-thrash, version-coupled. csos doesn't ship that.
+
+## Concrete next adds (priority order — 13 tools across v1.5/v1.6)
 
 The valuable adds are **around** Logic, not **into** it.
+
+1. **`logic_project_inspect(path)`** — read-only `.logicx` plist parsing. ~80% of "what's in this session" answers from the shallow plists; ignore `ProjectData` entirely.
+2. **`logic_watch_bounces({ dir })`** — MCP `resources/subscribe`-shaped tool. `chokidar` on the bounce-output directory; emit `notifications/resources/updated` when a bounce lands so downstream Compressor / FCP automation kicks in. **The Motif-cue-auditioning loop Mike actually does.**
+3. **`logic_sidecar_write(path, data)`** + **`logic_sidecar_read(path)`** — sibling `.json` next to a `.logicx` (cue name, scene tag, motif family, take notes). Pairs with Motif's score-map.
+4. **`logic_iac_send`** — thin CoreMIDI/IAC wrapper for transport (MMC) and notes/CC via `easymidi`. Scoped tightly — we don't pretend it's "control."
+5. **`logic_alternative_thumbnail(path, alternativeIndex?)`** — extract `WindowImage.jpg` per Alternative. Unique to csos.
+6. **9 novel csos-only adds** — Motif-loop bounce iterator, take-audition LLM critique, IAC passive listener, etc. See slice §6.
 
 ## What we do NOT plan to ship
 
@@ -59,4 +77,4 @@ Re-check these on every macOS / Logic release:
 - `ls /usr/local/bin/logic` and similar — does a CLI appear?
 - Apple's developer docs for Logic Pro — any new automation guide?
 
-Last reviewed: 2026-05-04 against Logic Pro 12.2 (Creator Studio).
+Last reviewed: 2026-05-05 against Logic Pro 12.2 (Creator Studio) — deep research swarm.

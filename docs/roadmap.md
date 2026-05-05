@@ -45,7 +45,7 @@ A protocol is a higher-level workflow that composes per-app tools to produce a d
 **Project schema:** `project.json` v2 — W3C Design Tokens 2025.10 brand tokens + deliverable matrix + scene beats with stable IDs (idempotency keys) + footage/audio manifests + centralized FCP role mapping.
 
 **Six protocols:**
-- `protocol.steam_trailer` (the keystone proof for Star Freight Grounded)
+- `protocol.steam_trailer` (the keystone proof for the showcase deliverable)
 - `protocol.devlog` (script + footage + Logic stems → FCP cut → Compressor encode)
 - `protocol.social_short` (FCP 9:16 reframe → Compressor preset matrix)
 - `protocol.podcast_episode` (Logic master → Compressor M4A + WAV → Pixelmator cover)

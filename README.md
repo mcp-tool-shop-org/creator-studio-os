@@ -172,13 +172,13 @@ All three iWork apps share a near-identical AppleScript shape (open / close / ex
     resolution: { width: 1920, height: 1080 },
     colorSpace: "1-1-1 (Rec. 709)"
   },
-  eventName: "Grounded Trailer",
+  eventName: "Showcase Trailer",
   projectName: "Cut 01",
   assets: [
     {
       id: "a1",
-      name: "Establishing — Freeport",
-      src: "/Volumes/T9-Shared/AI/creator-studio/projects/grounded-trailer/footage/freeport-wide.mov",
+      name: "Establishing — Wide Shot",
+      src: "/Volumes/T9-Shared/AI/creator-studio/projects/showcase/footage/establishing-wide.mov",
       durationSeconds: 8.2,
       hasVideo: true,
       hasAudio: true,

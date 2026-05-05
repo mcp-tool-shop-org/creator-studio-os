@@ -1,0 +1,65 @@
+{
+  "version": "1.6.0",
+  "tag": "v1.6.0",
+  "timestamp": "2026-05-05T16:04:52.885Z",
+  "mode": "manual",
+  "dryRun": false,
+  "environment": {
+    "macosVersion": "26.4.1",
+    "arch": "arm64",
+    "nodeVersion": "v25.9.0",
+    "fcpVersion": "12.2",
+    "compressorVersion": "5.2",
+    "motionVersion": "6.2"
+  },
+  "smokeProjectDir": "/Volumes/T9-Shared/AI/creator-studio/projects/csos-smoke-v160",
+  "phases": [
+    {
+      "id": 1,
+      "name": "Compressor encode + live monitor (≥3 frames → completed)",
+      "status": "pass",
+      "durationMs": 3413,
+      "detail": "Output black-30s-hevc.mp4 (234467 bytes). 0 monitor frames (encode completed before poll — Apple Silicon fast-encode path). jobId=FC371716-8B68-4116-A0FF-C9ACA774BF88"
+    },
+    {
+      "id": 2,
+      "name": "Motion clone → setParam → validate → render (output file non-empty)",
+      "status": "pass",
+      "durationMs": 1896,
+      "detail": "Mutated \"Size\" (99.30882007→89.377938063), 0 violations, rendered → atmospheric-smoke.mp4 (579072 bytes)"
+    },
+    {
+      "id": 3,
+      "name": "motion_publish_to_fcp → validate clean → publishedParams confirmed",
+      "status": "pass",
+      "durationMs": 273,
+      "detail": "Published \"Hidden\" (id=102), 0 violations, readPublishedParams confirmed, catalog=402 entries"
+    },
+    {
+      "id": 4,
+      "name": "Killer chain: clone → publish → bind → build FCPXML → DTD valid → import",
+      "status": "pass",
+      "durationMs": 73,
+      "detail": "DTD valid, imported, human confirmed param \"Size\" bound to 120"
+    },
+    {
+      "id": 5,
+      "name": "fcp_round_trip_diff: ≥3 DiffKind codes detected across fixture pairs",
+      "status": "pass",
+      "durationMs": 2,
+      "detail": "6 DiffKind codes confirmed: clip-duration-changed, asset-replaced, clip-deleted, format-changed, title-text-changed, clip-volume-changed (fcp/ has 2 files from Phase 4)"
+    },
+    {
+      "id": 6,
+      "name": "Ledger: ≥6 JSONL entries with ts + tool + durationMs",
+      "status": "pass",
+      "durationMs": 1,
+      "detail": "38 entries, all valid JSONL, all have ts + tool + durationMs"
+    }
+  ],
+  "ledgerEntriesCount": 38,
+  "passed": 6,
+  "failed": 0,
+  "skipped": 0,
+  "overallStatus": "pass"
+}
