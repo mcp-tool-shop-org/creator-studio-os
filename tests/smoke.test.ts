@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { loadConfig } from "../src/config.js";
 import type { SmokeOpts } from "../src/smoke/index.js";
+import { runPhase0, PHASE_REQUIRED_APPS } from "../src/smoke/phases/p0-app-health.js";
 import { runPhase1 } from "../src/smoke/phases/p1-compressor-monitor.js";
 import { runPhase2 } from "../src/smoke/phases/p2-motion-render.js";
 import { runPhase3 } from "../src/smoke/phases/p3-motion-publish-catalog.js";
@@ -56,6 +57,27 @@ afterAll(async () => {
 });
 
 // ── Phase dry-run shapes ──────────────────────────────────────────────────────
+
+describe("Phase 0 (dry-run)", () => {
+  it("returns pass with healthMap marking all required apps healthy", async () => {
+    const r = await runPhase0(opts);
+    expect(r.id).toBe(0);
+    expect(r.status).toBe("pass");
+    expect(r.durationMs).toBe(0);
+    expect(r.detail).toMatch(/dry-run/);
+    expect(r.healthMap.compressor).toBe(true);
+    expect(r.healthMap.motion).toBe(true);
+    expect(r.healthMap.fcp).toBe(true);
+  });
+
+  it("PHASE_REQUIRED_APPS maps phases 1-5 to their required apps", () => {
+    expect(PHASE_REQUIRED_APPS[1]).toContain("compressor");
+    expect(PHASE_REQUIRED_APPS[2]).toContain("motion");
+    expect(PHASE_REQUIRED_APPS[4]).toContain("fcp");
+    expect(PHASE_REQUIRED_APPS[4]).toContain("motion");
+    expect(PHASE_REQUIRED_APPS[5]).toContain("fcp");
+  });
+});
 
 describe("Phase 1 (dry-run)", () => {
   it("returns pass with durationMs=0 and mocked detail", async () => {
@@ -108,8 +130,17 @@ describe("Phase 5 (real — round-trip diff engine is pure TS)", () => {
 
 describe("Phase 6 (ledger integrity)", () => {
   it("fails gracefully when no ledger entries exist yet", async () => {
-    // Phase 6 checks for ≥6 entries; since we haven't written that many in dry-run, it should fail
-    const r = await runPhase6({ ...opts, dryRun: false });
+    // Use a fresh project name that has no prior ledger writes, so Phase 6 sees an empty ledger.
+    const freshProject = `csos-smoke-fresh-${Date.now()}`;
+    const freshProjectDir = join(tmpDir, "projects", freshProject);
+    await mkdir(freshProjectDir, { recursive: true });
+    const freshOpts: SmokeOpts = {
+      ...opts,
+      dryRun: false,
+      smokeProjectName: freshProject,
+      smokeProjectDir: freshProjectDir,
+    };
+    const r = await runPhase6(freshOpts);
     expect(r.id).toBe(6);
     // Either fail (no ledger file) or fail (< 6 entries) — both are valid
     expect(["fail", "skip"]).toContain(r.status);

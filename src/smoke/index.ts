@@ -28,6 +28,7 @@ import {
   type PhaseResult,
   type SmokeReport,
 } from "./report.js";
+import { runPhase0, PHASE_REQUIRED_APPS } from "./phases/p0-app-health.js";
 import { runPhase1 } from "./phases/p1-compressor-monitor.js";
 import { runPhase2 } from "./phases/p2-motion-render.js";
 import { runPhase3 } from "./phases/p3-motion-publish-catalog.js";
@@ -75,8 +76,36 @@ export async function runSmoke(args: string[]): Promise<void> {
 
   const phases: PhaseResult[] = [];
 
+  // Phase 0 — health pre-flight
+  const p0 = await runPhase0(opts);
+  phases.push(p0);
+  printPhaseResult(p0);
+  const { healthMap } = p0;
+
+  /** Return apps required by phaseId that are not currently healthy. */
+  function missingAppsFor(phaseId: number): string[] {
+    if (opts.dryRun) return []; // dry-run always runs all phases
+    return (PHASE_REQUIRED_APPS[phaseId] ?? []).filter((a) => !(healthMap[a] ?? false));
+  }
+
   const runners = [runPhase1, runPhase2, runPhase3, runPhase4, runPhase5];
   for (const runner of runners) {
+    // We need the phase id — run a probe only in dry-run to get the name, otherwise
+    // infer from the runner index (1-indexed).
+    const phaseId = runners.indexOf(runner) + 1;
+    const missing = missingAppsFor(phaseId);
+    if (missing.length > 0) {
+      const result: PhaseResult = {
+        id: phaseId,
+        name: `phase ${phaseId} (requires ${missing.join(", ")})`,
+        status: "skip",
+        durationMs: 0,
+        detail: `Skipped: ${missing.join(", ")} not healthy — see Phase 0 pre-flight`,
+      };
+      phases.push(result);
+      printPhaseResult(result);
+      continue;
+    }
     const result = await runner(opts);
     phases.push(result);
     printPhaseResult(result);
