@@ -115,4 +115,43 @@ For pure ProRes / H.264 transcodes that don't need Compressor's filter chain or 
 - `compressor_encode` — single-job CLI invocation
 - `compressor_batch_submit` — `open -b` handoff with a `.compressorbatch` file (deferred — needs `.compressorbatch` schema work)
 
-Last reviewed: 2026-05-04 against Compressor 5.2.
+## `-locationpath` extension replacement (verified 2026-05-05)
+
+When a full file path is passed to `-locationpath`, Compressor uses only the **directory** and **filename stem** — it replaces the extension with the container format dictated by the setting:
+
+- `EFBComputer_HEVC8.compressorsetting` → `.mp4`
+- ProRes settings → `.mov`
+
+So `-locationpath /out/black-30s-hevc.mov` writes to `/out/black-30s-hevc.mp4` for HEVC 8-bit. The `.mov` extension is silently ignored.
+
+**Implication for code:** never poll for a specific extension after a Compressor job. Poll by **stem** (`files.find(f => f.startsWith(stem + "."))`). The output extension is determined by the preset, not the caller.
+
+Passing a bare directory path (without a filename) triggers exit 255: "Destination is a directory; Expected complete output file path with file name." — so a full path with ANY extension is required, but Compressor only honours the directory and stem.
+
+## Daemon-state recovery (surfaced by v1.6.0 smoke, 2026-05-05)
+
+Compressor's daemon can land in a state that refuses new submissions with:
+
+```
+Submission Error: Error Domain=com.apple.compressor.ErrorDomain Code=1
+"Unable to submit to queue. Please restart your computer or verify your
+Compressor installation is correct."
+```
+
+Apple's message is misleading. The fix is not a reboot — it's a daemon reset:
+
+```bash
+killall Compressor   # kills the daemon; it respawns on next CLI call
+sleep 2
+Compressor -jobpath <input> -settingpath <preset> -locationpath <output>
+```
+
+`encodeJob` in `src/apps/compressor/cli.ts` detects this error string and retries once automatically (daemon kill → 2s wait → one retry). If the retry also fails, the original error is surfaced.
+
+**Root cause pattern:** a prior job submission entered a bad state (e.g. the job was submitted but the process died before Compressor could finalize queue registration). The daemon holds the zombie entry and rejects new submissions until it is restarted.
+
+**Prevention:** `drainCompressorQueue()` in `src/apps/compressor/monitor.ts` polls `Compressor -monitor -once` (no filter) and `-kill`s any non-terminal batches before the next submission. The smoke harness calls this between Phase 1 and Phase 2.
+
+**When you see it:** any time two Compressor jobs are submitted in the same session without waiting for the first to fully exit the queue. Common in smoke / batch workflows.
+
+Last reviewed: 2026-05-05 against Compressor 5.2.

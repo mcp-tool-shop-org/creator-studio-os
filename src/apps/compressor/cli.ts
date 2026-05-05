@@ -1,4 +1,7 @@
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 import { access } from "node:fs/promises";
 import { CreatorStudioError } from "../../errors.js";
 import { loadConfig } from "../../config.js";
@@ -48,7 +51,7 @@ async function ensureExists(path: string, code: "E_JOB_NOT_FOUND" | "E_SETTING_N
   }
 }
 
-export async function encodeJob(job: EncodeJob): Promise<EncodeResult> {
+export async function encodeJob(job: EncodeJob, _retried = false): Promise<EncodeResult> {
   const cfg = loadConfig();
   await ensureExists(cfg.compressorBinaryPath, "E_COMPRESSOR_NOT_FOUND");
   await ensureExists(job.jobPath, "E_JOB_NOT_FOUND");
@@ -90,10 +93,21 @@ export async function encodeJob(job: EncodeJob): Promise<EncodeResult> {
         const batchId = batchMatch ? batchMatch[1] : undefined;
         resolve({ jobId, batchId, rawOutput: merged });
       } else {
+        const errorMsg = merged || "no output";
+        // Compressor daemon can land in a bad state and refuse new submissions.
+        // Reset: kill the daemon (it respawns on next CLI call), wait 2s, retry once.
+        if (!_retried && /Unable to submit to queue/i.test(errorMsg)) {
+          execFileAsync("killall", ["Compressor"])
+            .catch(() => {})
+            .then(() => new Promise((r) => setTimeout(r, 2000)))
+            .then(() => encodeJob(job, true))
+            .then(resolve, reject);
+          return;
+        }
         reject(
           new CreatorStudioError(
             "E_COMPRESSOR_FAILED",
-            `Compressor exit ${code}: ${merged || "no output"}`,
+            `Compressor exit ${code}: ${errorMsg}`,
             "Run 'creator-studio-os verify' and confirm Compressor's purchase validation completed by opening it once interactively.",
           ),
         );
