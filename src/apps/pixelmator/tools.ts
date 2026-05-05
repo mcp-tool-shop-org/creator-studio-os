@@ -25,6 +25,10 @@ import {
   ungroupLayer,
   setLayerText,
 } from "./layers.js";
+import { setBlendMode, setLayerShadow, setLayerStroke } from "./styles.js";
+import { EFFECT_CLASSES, applyEffect, COLOR_ADJUSTMENT_PROPS, applyColorAdjustments } from "./effects.js";
+import { ML_ALGORITHMS, applyMl, runShortcut } from "./ml.js";
+import { detectInDocument, replaceText, replaceLayerImage } from "./detect.js";
 
 function ok<T>(value: T) {
   return {
@@ -445,6 +449,199 @@ export function registerPixelmatorTools(server: McpServer) {
           strokeColor: strokeColor as [number, number, number] | undefined,
           strokeWidth, opacity,
         }));
+      } catch (e) { return err(e); }
+    },
+  );
+
+  // ── 2.1.2 Blend modes + layer styles ────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_set_blend_mode",
+    "Set the compositing blend mode on a named layer in an open Pixelmator document. Accepts all 28 Pixelmator Pro blend modes (normal, multiply, screen, overlay, …, luminosity).",
+    {
+      documentName: z.string(),
+      layerName: z.string(),
+      blendMode: z.enum(BLEND_MODES).describe("Blend mode from Pixelmator Pro's full 28-mode enum"),
+    },
+    async ({ documentName, layerName, blendMode }) => {
+      try {
+        await setBlendMode(documentName, layerName, blendMode);
+        return ok({ layerName, blendMode });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_set_layer_shadow",
+    "Add or edit the drop shadow on a named layer in an open Pixelmator document. Color is 8-bit RGB [r, g, b]. All properties are optional — only supplied values are changed.",
+    {
+      documentName: z.string(),
+      layerName: z.string(),
+      color: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("[r, g, b] shadow color (0–255)"),
+      blur: z.number().nonnegative().optional().describe("Blur radius in pixels"),
+      distance: z.number().nonnegative().optional().describe("Shadow offset distance in pixels"),
+      angle: z.number().min(0).max(360).optional().describe("Shadow angle in degrees"),
+      opacity: z.number().int().min(0).max(100).optional().describe("Shadow opacity 0–100"),
+    },
+    async ({ documentName, layerName, color, blur, distance, angle, opacity }) => {
+      try {
+        await setLayerShadow({
+          documentName, layerName,
+          color: color as [number, number, number] | undefined,
+          blur, distance, angle, opacity,
+        });
+        return ok({ updated: layerName });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_set_layer_stroke",
+    "Add or edit the outline stroke on a named layer in an open Pixelmator document. Color is 8-bit RGB [r, g, b]. Position is inside, center, or outside.",
+    {
+      documentName: z.string(),
+      layerName: z.string(),
+      color: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("[r, g, b] stroke color (0–255)"),
+      width: z.number().positive().optional().describe("Stroke width in pixels"),
+      position: z.enum(["inside", "center", "outside"]).optional(),
+      opacity: z.number().int().min(0).max(100).optional().describe("Stroke opacity 0–100"),
+    },
+    async ({ documentName, layerName, color, width, position, opacity }) => {
+      try {
+        await setLayerStroke({
+          documentName, layerName,
+          color: color as [number, number, number] | undefined,
+          width, position, opacity,
+        });
+        return ok({ updated: layerName });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  // ── 2.1.3 Effects + color adjustments ────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_apply_effect",
+    "Apply a non-destructive effect to a layer in an open Pixelmator document. Dispatches to one of 23 Pixelmator Pro effect classes (gaussian blur, motion blur, pixelate, color fill, etc.). Targets the front layer by default; supply layerName to target a specific layer.",
+    {
+      documentName: z.string(),
+      effectClass: z.enum(EFFECT_CLASSES).describe("Pixelmator Pro effect class name"),
+      layerName: z.string().optional().describe("Target layer name (defaults to front layer)"),
+      intensity: z.number().nonnegative().optional().describe("Effect intensity / radius (meaning varies by class)"),
+      params: z.record(z.union([z.number(), z.string(), z.boolean()])).optional().describe("Additional effect parameters as name→value pairs"),
+    },
+    async ({ documentName, effectClass, layerName, intensity, params }) => {
+      try {
+        await applyEffect({ documentName, effectClass, layerName, intensity, params });
+        return ok({ applied: effectClass, layerName: layerName ?? "front layer" });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_apply_color_adjustment",
+    "Set one or more color-adjustment properties on a layer in an open Pixelmator document. Supports all 24 Pixelmator Pro color adjustment properties including temperature, exposure, saturation, custom LUT path, and vignette. Set nonDestructive=true to add a new adjustment layer instead of modifying the target layer's own adjustments.",
+    {
+      documentName: z.string(),
+      adjustments: z.array(z.object({
+        property: z.enum(COLOR_ADJUSTMENT_PROPS).describe("Color adjustment property name"),
+        value: z.union([z.number(), z.string(), z.boolean()]).describe("New value (number, file path for custom lut, or boolean)"),
+      })).min(1),
+      layerName: z.string().optional().describe("Target layer name (defaults to front layer)"),
+      nonDestructive: z.boolean().default(false).describe("When true, creates a new adjustment layer on top"),
+    },
+    async ({ documentName, adjustments, layerName, nonDestructive }) => {
+      try {
+        await applyColorAdjustments({ documentName, layerName, adjustments, nonDestructive });
+        return ok({ adjusted: adjustments.map((a) => a.property) });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  // ── 2.1.4 ML + Shortcuts bridge ──────────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_apply_ml",
+    "Run a Pixelmator Pro ML algorithm on an open document. Algorithms include: super_resolution (3× upscale or exact dimensions), enhance, denoise, deband, match_colors (reference image required), remove_background, select_subject, and four auto-adjust variants. ML operations may be slow on large files.",
+    {
+      documentName: z.string(),
+      algorithm: z.enum(ML_ALGORITHMS),
+      denoiseIntensity: z.number().int().min(0).max(100).optional().describe("Denoise intensity 0–100 (denoise only)"),
+      matchColorsReference: z.string().optional().describe("Absolute path to reference image for match_colors"),
+      smartRefine: z.boolean().optional().describe("Enable ML smart-refine for select_subject (default true)"),
+      targetWidth: z.number().int().positive().optional().describe("Target width for super_resolution via resize (omit for fixed 3×)"),
+      targetHeight: z.number().int().positive().optional().describe("Target height for super_resolution via resize"),
+    },
+    async ({ documentName, algorithm, denoiseIntensity, matchColorsReference, smartRefine, targetWidth, targetHeight }) => {
+      try {
+        await applyMl({ documentName, algorithm, denoiseIntensity, matchColorsReference, smartRefine, targetWidth, targetHeight });
+        return ok({ applied: algorithm, documentName });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_run_shortcut",
+    "Run a Pixelmator Shortcuts action by name via the macOS shortcuts CLI. Exposes ML knobs the sdef can't reach — e.g. portrait-specific background removal, Increase Resolution (3× ML upscale), and Optimize Image for Web. The named shortcut must be installed in the user's Shortcuts library.",
+    {
+      shortcutName: z.string().describe("Name of the Shortcuts action as it appears in the user's library"),
+      input: z.union([z.string(), z.array(z.string())]).optional().describe("Input file(s) as absolute POSIX path(s)"),
+      output: z.string().optional().describe("Output file POSIX path"),
+    },
+    async ({ shortcutName, input, output }) => {
+      try {
+        const result = await runShortcut({ shortcutName, input, output });
+        return ok(result);
+      } catch (e) { return err(e); }
+    },
+  );
+
+  // ── 2.1.5 Detect + replace ────────────────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_detect",
+    "Detect faces or QR codes in an open Pixelmator document using Pixelmator Pro's ML detection commands. Returns bounding boxes for each detected item; QR results also include the decoded message payload.",
+    {
+      documentName: z.string(),
+      kind: z.enum(["face", "qr"]).describe("What to detect: face bounding boxes or QR codes with message payload"),
+    },
+    async ({ documentName, kind }) => {
+      try {
+        return ok(await detectInDocument(documentName, kind));
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_replace_text",
+    "Find and replace text across all text layers in an open Pixelmator document using Pixelmator Pro's built-in replace command. Returns {replaced: true} if no error was thrown (Pixelmator does not report a match count).",
+    {
+      documentName: z.string(),
+      findText: z.string().describe("Text to find (searches all text layers)"),
+      replaceWith: z.string(),
+      matchWords: z.boolean().optional().describe("Match whole words only"),
+      caseSensitive: z.boolean().optional().default(false),
+    },
+    async ({ documentName, findText, replaceWith, matchWords, caseSensitive }) => {
+      try {
+        return ok(await replaceText({ documentName, findText, replaceWith, matchWords, caseSensitive }));
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_replace_layer",
+    "Replace the pixel content of an image layer with a new file while preserving all layer adjustments, effects, and styles. Equivalent to Pixelmator Pro's Edit → Replace Image. scaleMode controls how the new image is fitted into the existing layer bounds.",
+    {
+      documentName: z.string(),
+      layerName: z.string().describe("Name of the image layer whose content will be replaced"),
+      newImagePath: z.string().describe("Absolute POSIX path to the replacement image file"),
+      scaleMode: z.enum(["original", "stretch", "scale to fill", "scale to fit"]).optional().default("scale to fit"),
+    },
+    async ({ documentName, layerName, newImagePath, scaleMode }) => {
+      try {
+        await replaceLayerImage({ documentName, layerName, newImagePath, scaleMode });
+        return ok({ replaced: layerName, newImage: newImagePath });
       } catch (e) { return err(e); }
     },
   );

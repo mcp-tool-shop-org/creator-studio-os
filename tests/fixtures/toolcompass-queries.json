@@ -19,5 +19,15 @@
   { "query": "group several layers together in Pixelmator", "target_tool": "pixelmator_group_layers" },
   { "query": "ungroup a layer group in Pixelmator", "target_tool": "pixelmator_ungroup" },
   { "query": "change the font size and color on a text layer in Pixelmator", "target_tool": "pixelmator_set_layer_text" },
-  { "query": "draw a filled rectangle shape in Pixelmator", "target_tool": "pixelmator_make_shape" }
+  { "query": "draw a filled rectangle shape in Pixelmator", "target_tool": "pixelmator_make_shape" },
+  { "query": "set multiply blend mode on a Pixelmator layer", "target_tool": "pixelmator_set_blend_mode" },
+  { "query": "add a drop shadow to a layer in Pixelmator", "target_tool": "pixelmator_set_layer_shadow" },
+  { "query": "add an outline stroke to a Pixelmator layer", "target_tool": "pixelmator_set_layer_stroke" },
+  { "query": "apply gaussian blur effect to a Pixelmator layer", "target_tool": "pixelmator_apply_effect" },
+  { "query": "adjust exposure and saturation of a Pixelmator layer", "target_tool": "pixelmator_apply_color_adjustment" },
+  { "query": "upscale an image using Pixelmator ML super resolution", "target_tool": "pixelmator_apply_ml" },
+  { "query": "run a Pixelmator Shortcuts action to remove background from a portrait photo", "target_tool": "pixelmator_run_shortcut" },
+  { "query": "detect faces in an open Pixelmator document", "target_tool": "pixelmator_detect" },
+  { "query": "find and replace text across all text layers in Pixelmator", "target_tool": "pixelmator_replace_text" },
+  { "query": "swap the image in a Pixelmator template layer while keeping its effects", "target_tool": "pixelmator_replace_layer" }
 ]
