@@ -14,6 +14,7 @@ import {
 } from "./library.js";
 import { openFcp, activateFcp, isFcpRunning } from "./app.js";
 import { runApp } from "../../runners/runApp.js";
+import { buildEffectsCatalog, findEffect } from "./effects.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -322,6 +323,39 @@ export function registerFcpTools(server: McpServer) {
     async () => {
       try {
         return ok({ running: await isFcpRunning() });
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_effects_catalog",
+    "Walk Motion Templates directories (user, system, FCP-bundled) and return a catalog of all .moti/.motn effects with their kind (title/generator/effect/transition), published parameter names, and param counts. Results are cached at <dataDir>/.csos/effects-catalog.json.",
+    {
+      kind: z
+        .enum(["title", "generator", "effect", "transition"])
+        .optional()
+        .describe("Filter results to a specific effect kind"),
+      refresh: z
+        .boolean()
+        .optional()
+        .describe("Force a full rescan — ignore the cache"),
+      name: z
+        .string()
+        .optional()
+        .describe("Return only the entry matching this name (case-insensitive). Throws E_EFFECT_NOT_FOUND if missing."),
+    },
+    async ({ kind, refresh, name }) => {
+      try {
+        const catalog = await buildEffectsCatalog({ refresh });
+        let entries = catalog.entries;
+        if (kind) entries = entries.filter((e) => e.kind === kind);
+        if (name) {
+          const found = findEffect(name, { ...catalog, entries });
+          return ok({ buildTime: catalog.buildTime, count: 1, entries: [found] });
+        }
+        return ok({ buildTime: catalog.buildTime, count: entries.length, entries });
       } catch (e) {
         return err(e);
       }
