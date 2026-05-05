@@ -6,6 +6,7 @@ import {
   setParam,
   cloneTemplate,
 } from "./ozml.js";
+import { validateTemplate } from "./validate.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -162,6 +163,22 @@ export function registerMotionTools(server: McpServer) {
           outputPath,
           matchIndex,
         });
+        return ok(result);
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_template_validate",
+    "Validate a Motion .motn template against 31 OZML structural invariants. Returns ok, violations[], and warnings[]. Run before any write to catch structural corruption before it silently drops content in Motion.",
+    {
+      path: z.string().describe("Absolute path to a .motn or .moti file"),
+    },
+    async ({ path }) => {
+      try {
+        const result = await validateTemplate(path);
         return ok(result);
       } catch (e) {
         return err(e);
