@@ -9,7 +9,7 @@
  *   - Connected-clip (title) anchor collisions → two clips compete for the same attach point
  */
 import { CreatorStudioError } from "../../errors.js";
-import type { ProjectSpec } from "../../fcpxml/types.js";
+import type { ProjectSpec, CaptionSpec } from "../../fcpxml/types.js";
 
 // ─── Compound safety ─────────────────────────────────────────────────────────
 
@@ -22,22 +22,54 @@ export interface CompoundViolation {
 export interface CompoundSafetyResult {
   safe: boolean;
   violations: CompoundViolation[];
+  /** Set when two ref-clips share the same mediaId (propagation-on-save trap) */
+  propagationWarning?: string;
 }
 
 /**
  * Detect primary-spine asset-clips whose time ranges overlap.
  * FCP resolves overlaps by creating implicit compound clips — a silent
  * structural change that breaks downstream automation.
+ *
+ * Also detects ref-clips sharing the same mediaId — the propagation-on-save
+ * trap where two ref-clips sharing one <media> compound propagate edits
+ * between them when FCP saves.
  */
 export function validateCompoundSafety(spec: ProjectSpec): CompoundSafetyResult {
+  // ── Primary-spine overlap check ───────────────────────────────────────────
   const clips = spec.spine
-    .filter((s) => s.kind === "asset-clip")
+    .filter((s) => s.kind === "asset-clip" && (s.lane ?? 0) === 0)
     .map((s) => ({
       name: s.name,
       start: s.offsetSeconds,
       end: s.offsetSeconds + s.durationSeconds,
     }))
     .sort((a, b) => a.start - b.start);
+
+  // ── ref-clip same-media propagation trap ──────────────────────────────────
+  const refClips = spec.spine.filter((s) => s.kind === "ref-clip");
+  const mediaIdCounts = new Map<string, string[]>();
+  for (const rc of refClips) {
+    const existing = mediaIdCounts.get(rc.mediaId) ?? [];
+    existing.push(rc.name);
+    mediaIdCounts.set(rc.mediaId, existing);
+  }
+  for (const [mediaId, names] of mediaIdCounts) {
+    if (names.length > 1) {
+      // Emit a violation for the second ref-clip (the first is fine)
+      return {
+        safe: false,
+        violations: [
+          {
+            clipA: names[0],
+            clipB: names[1],
+            overlapSeconds: 0,
+          },
+        ],
+        propagationWarning: `ref-clips "${names.join('", "')}" share mediaId="${mediaId}" — edits propagate between them on FCP save. Use distinct mediaId values.`,
+      };
+    }
+  }
 
   const violations: CompoundViolation[] = [];
 
@@ -72,18 +104,43 @@ export interface CaptionLintResult {
 const CAPTION_NAME_RE = /caption|subtitle/i;
 // FCP roles must be "RoleName.SubroleName" — a bare role string breaks caption assignment
 const ROLE_FORMAT_RE = /^[^.]+\.[^.]+/;
+// FCP-recognised caption role prefixes
+const VALID_CAPTION_ROLE_PREFIXES = ["iTT.", "CEA-608.", "SRT."];
 
 /**
- * Lint caption-related roles and placement.
+ * Lint caption and subtitle role assignments in a ProjectSpec.
  *
- * FCP caption clips must have roles in the form "Role.Subrole". A bare role
- * without the subrole is silently discarded by FCP's importer.
+ * Checks:
+ * - CaptionSpec items must have a role in "Role.Subrole" format with a
+ *   recognised FCP prefix (iTT., CEA-608., SRT.) — caught at builder time,
+ *   before FCP's importer can silently drop the caption.
+ * - asset-clip audio/video roles that look like captions must use correct format.
+ * - title items named like captions must not be on lane 0.
  */
 export function lintCaptions(spec: ProjectSpec): CaptionLintResult {
   const issues: CaptionIssue[] = [];
 
   for (const item of spec.spine) {
     const name = item.name;
+
+    // ── CaptionSpec: validate role at builder time ─────────────────────────
+    if (item.kind === "caption") {
+      const role = item.role;
+      if (!ROLE_FORMAT_RE.test(role)) {
+        issues.push({
+          clipName: name,
+          role,
+          reason: `Caption role "${role}" is missing a subrole — FCP silently drops captions without "Role.Subrole" format`,
+        });
+      } else if (!VALID_CAPTION_ROLE_PREFIXES.some((pfx) => role.startsWith(pfx))) {
+        issues.push({
+          clipName: name,
+          role,
+          reason: `Caption role "${role}" uses an unrecognised prefix — FCP caption roles must start with "iTT.", "CEA-608.", or "SRT."`,
+        });
+      }
+      continue;
+    }
 
     if (item.kind === "asset-clip") {
       const { audioRole, videoRole } = item;
@@ -138,28 +195,46 @@ export interface AnchorSafetyResult {
 }
 
 /**
- * Detect connected-clip (title) anchor collisions.
+ * Detect connected-clip anchor collisions (titles AND anchored asset-clips).
  *
- * Two titles on the same lane with overlapping time ranges compete for the same
- * attachment point on the spine. FCP's importer resolves this non-deterministically
- * and the output differs between FCP versions.
+ * Two anchored items on the same lane with overlapping time ranges compete for
+ * the same attachment point on the spine. FCP's importer resolves this
+ * non-deterministically and the output differs between FCP versions.
+ *
+ * Catches:
+ * - title vs title on same lane
+ * - anchored asset-clip vs anchored asset-clip on same lane
+ * - title vs anchored asset-clip on same lane (cross-type collision)
  */
 export function checkAnchorSafety(spec: ProjectSpec): AnchorSafetyResult {
-  const titles = spec.spine
-    .filter((s) => s.kind === "title")
-    .map((s) => ({
-      name: s.name,
-      lane: s.lane,
-      start: s.offsetSeconds,
-      end: s.offsetSeconds + s.durationSeconds,
-    }))
-    .sort((a, b) => a.lane - b.lane || a.start - b.start);
+  // Collect ALL anchored items (lane !== 0): titles + anchored asset-clips
+  const anchored: Array<{ name: string; lane: number; start: number; end: number }> = [];
+
+  for (const s of spec.spine) {
+    if (s.kind === "title" && s.lane !== 0) {
+      anchored.push({
+        name: s.name,
+        lane: s.lane,
+        start: s.offsetSeconds,
+        end: s.offsetSeconds + s.durationSeconds,
+      });
+    } else if (s.kind === "asset-clip" && (s.lane ?? 0) !== 0) {
+      anchored.push({
+        name: s.name,
+        lane: s.lane ?? 1,
+        start: s.offsetSeconds,
+        end: s.offsetSeconds + s.durationSeconds,
+      });
+    }
+  }
+
+  anchored.sort((a, b) => a.lane - b.lane || a.start - b.start);
 
   const collisions: AnchorCollision[] = [];
 
-  for (let i = 0; i < titles.length - 1; i++) {
-    const a = titles[i];
-    const b = titles[i + 1];
+  for (let i = 0; i < anchored.length - 1; i++) {
+    const a = anchored[i];
+    const b = anchored[i + 1];
     if (a.lane === b.lane && a.end > b.start) {
       collisions.push({
         titleA: a.name,

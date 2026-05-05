@@ -5,6 +5,9 @@ import {
   type ProjectSpec,
   type TitleSpec,
   type TransitionSpec,
+  type CaptionSpec,
+  type RefClipSpec,
+  type MulticamClipSpec,
 } from "./types.js";
 import { frameDurationAttr, secondsToTime } from "./time.js";
 import { runSafetyPreflights } from "../apps/fcp/safety.js";
@@ -71,7 +74,14 @@ export function buildProjectFcpxml(
       : Math.max(
           1,
           ...spec.spine
-            .filter((s) => s.kind === "asset-clip" || s.kind === "title")
+            .filter(
+              (s) =>
+                s.kind === "asset-clip" ||
+                s.kind === "title" ||
+                s.kind === "caption" ||
+                s.kind === "ref-clip" ||
+                s.kind === "mc-clip",
+            )
             .map((s) => s.offsetSeconds + s.durationSeconds),
         );
 
@@ -152,6 +162,8 @@ ${indent}  </text-style-def>
 ${indent}</title>`;
   };
 
+  type PrimaryClipSpec = Extract<(typeof spec.spine)[number], { kind: "asset-clip" }>;
+
   const findAnchoredTitlesFor = (clipOff: number, clipDur: number): TitleSpec[] => {
     return titles.filter(
       (t) =>
@@ -161,9 +173,19 @@ ${indent}</title>`;
     );
   };
 
-  const renderClip = (
-    c: Extract<(typeof spec.spine)[number], { kind: "asset-clip" }>,
-  ) => {
+  // Anchored asset-clips: lane != 0, time overlaps with the primary clip they attach to
+  const findAnchoredClipsFor = (clipOff: number, clipDur: number): PrimaryClipSpec[] => {
+    return spec.spine
+      .filter(
+        (s): s is PrimaryClipSpec =>
+          s.kind === "asset-clip" &&
+          (s.lane ?? 0) !== 0 &&
+          s.offsetSeconds >= clipOff &&
+          s.offsetSeconds < clipOff + clipDur,
+      );
+  };
+
+  const renderClip = (c: PrimaryClipSpec) => {
     const offset = secondsToTime(c.offsetSeconds, rate);
     const dur = secondsToTime(c.durationSeconds, rate);
     const start = secondsToTime(c.startSeconds, rate);
@@ -176,9 +198,27 @@ ${indent}</title>`;
       ? ` audioRole="${escapeXmlAttr(c.audioRole)}"`
       : "";
 
-    const anchored = findAnchoredTitlesFor(c.offsetSeconds, c.durationSeconds);
-    const titlesXml = anchored
+    const anchoredTitles = findAnchoredTitlesFor(c.offsetSeconds, c.durationSeconds);
+    const titlesXml = anchoredTitles
       .map((t) => renderTitleBody(t, t.offsetSeconds - c.offsetSeconds, "        "))
+      .join("\n");
+
+    // Anchored asset-clips (B-roll overlay at non-zero lane)
+    const anchoredClips = findAnchoredClipsFor(c.offsetSeconds, c.durationSeconds);
+    const anchoredClipsXml = anchoredClips
+      .map((ac) => {
+        const acOffset = secondsToTime(ac.offsetSeconds - c.offsetSeconds, rate);
+        const acDur = secondsToTime(ac.durationSeconds, rate);
+        const acStart = secondsToTime(ac.startSeconds, rate);
+        const acLane = ` lane="${ac.lane}"`;
+        const acVideoRole = ac.videoRole
+          ? ` videoRole="${escapeXmlAttr(ac.videoRole)}"`
+          : "";
+        const acAudioRole = ac.audioRole
+          ? ` audioRole="${escapeXmlAttr(ac.audioRole)}"`
+          : "";
+        return `        <asset-clip ref="${escapeXmlAttr(ac.ref)}" name="${escapeXmlAttr(ac.name)}" offset="${acOffset}" duration="${acDur}" start="${acStart}"${acLane}${acVideoRole}${acAudioRole}/>`;
+      })
       .join("\n");
 
     const innerParts: string[] = [];
@@ -186,6 +226,7 @@ ${indent}</title>`;
       innerParts.push(`        <adjust-volume amount="${c.volumeDb}dB"/>`);
     }
     if (titlesXml) innerParts.push(titlesXml);
+    if (anchoredClipsXml) innerParts.push(anchoredClipsXml);
     if (markers) innerParts.push(markers);
     const inner =
       innerParts.length > 0 ? `\n${innerParts.join("\n")}\n      ` : "";
@@ -199,9 +240,41 @@ ${indent}</title>`;
     return `      <transition name="${escapeXmlAttr(t.name)}" offset="${offset}" duration="${dur}"/>`;
   };
 
+  const renderCaption = (c: CaptionSpec) => {
+    const offset = secondsToTime(c.offsetSeconds, rate);
+    const dur = secondsToTime(c.durationSeconds, rate);
+    const lane = c.lane !== 0 ? ` lane="${c.lane}"` : "";
+    return `      <caption name="${escapeXmlAttr(c.name)}" offset="${offset}" duration="${dur}"${lane} role="${escapeXmlAttr(c.role)}">
+        <text>${escapeXmlText(c.text)}</text>
+      </caption>`;
+  };
+
+  const renderRefClip = (r: RefClipSpec) => {
+    const offset = secondsToTime(r.offsetSeconds, rate);
+    const dur = secondsToTime(r.durationSeconds, rate);
+    const lane = r.lane !== 0 ? ` lane="${r.lane}"` : "";
+    return `      <ref-clip ref="${escapeXmlAttr(r.mediaId)}" name="${escapeXmlAttr(r.name)}" offset="${offset}" duration="${dur}"${lane}/>`;
+  };
+
+  const renderMcClip = (m: MulticamClipSpec) => {
+    const offset = secondsToTime(m.offsetSeconds, rate);
+    const dur = secondsToTime(m.durationSeconds, rate);
+    const lane = m.lane !== 0 ? ` lane="${m.lane}"` : "";
+    const srcEnable = m.sources.length > 0 ? "" : ' srcEnable="all"';
+    const sourcesXml = m.sources
+      .map(
+        (s) =>
+          `        <mc-source angleID="${escapeXmlAttr(s.angleId)}" srcEnable="${s.srcEnable}"/>`,
+      )
+      .join("\n");
+    const inner = sourcesXml ? `\n${sourcesXml}\n      ` : "";
+    return `      <mc-clip ref="${escapeXmlAttr(m.mediaId)}" name="${escapeXmlAttr(m.name)}" offset="${offset}" duration="${dur}"${lane}${srcEnable}>${inner}</mc-clip>`;
+  };
+
+  // Collect which title offsets are anchored (i.e., children of a primary clip)
   const anchoredTitleOffsets = new Set<number>();
   for (const item of spec.spine) {
-    if (item.kind === "asset-clip") {
+    if (item.kind === "asset-clip" && (item.lane ?? 0) === 0) {
       for (const t of findAnchoredTitlesFor(
         item.offsetSeconds,
         item.durationSeconds,
@@ -211,17 +284,36 @@ ${indent}</title>`;
     }
   }
 
+  // Collect which anchored-clip offsets are already rendered as children of primary clips
+  const anchoredClipOffsets = new Set<number>();
+  for (const item of spec.spine) {
+    if (item.kind === "asset-clip" && (item.lane ?? 0) === 0) {
+      for (const ac of findAnchoredClipsFor(item.offsetSeconds, item.durationSeconds)) {
+        anchoredClipOffsets.add(ac.offsetSeconds);
+      }
+    }
+  }
+
   const spineItems = spec.spine
     .filter((item) => {
-      if (item.kind !== "title") return true;
-      if (item.lane === 0) return true;
-      return !anchoredTitleOffsets.has(item.offsetSeconds);
+      // Skip anchored titles (rendered as children of their parent clip)
+      if (item.kind === "title" && item.lane !== 0) {
+        return !anchoredTitleOffsets.has(item.offsetSeconds);
+      }
+      // Skip anchored asset-clips (rendered as children of their parent clip)
+      if (item.kind === "asset-clip" && (item.lane ?? 0) !== 0) {
+        return !anchoredClipOffsets.has(item.offsetSeconds);
+      }
+      return true;
     })
     .map((item) => {
       if (item.kind === "asset-clip") return renderClip(item);
       if (item.kind === "title")
         return renderTitleBody(item, item.offsetSeconds, "      ");
       if (item.kind === "transition") return renderTransition(item);
+      if (item.kind === "caption") return renderCaption(item);
+      if (item.kind === "ref-clip") return renderRefClip(item);
+      if (item.kind === "mc-clip") return renderMcClip(item);
       throw new CreatorStudioError(
         "E_FCPXML_INVALID",
         `Unknown spine item kind: ${(item as { kind: string }).kind}`,
@@ -230,7 +322,60 @@ ${indent}</title>`;
 
   const spineXml = spineItems.join("\n");
 
-  const resourcesXml = [formatXml, effectsXml, assetsXml]
+  // ── Compound media resources ─────────────────────────────────────────────
+  const compoundMediaXml = (spec.compoundMedia ?? [])
+    .map((cm) => {
+      const innerClips = cm.clips
+        .map((c) => {
+          const cOff = secondsToTime(c.offsetSeconds, rate);
+          const cDur = secondsToTime(c.durationSeconds, rate);
+          const cStart = secondsToTime(c.startSeconds, rate);
+          return `        <asset-clip ref="${escapeXmlAttr(c.ref)}" name="${escapeXmlAttr(c.name)}" offset="${cOff}" duration="${cDur}" start="${cStart}"/>`;
+        })
+        .join("\n");
+      const sequenceDur = cm.clips.length > 0
+        ? secondsToTime(
+            Math.max(...cm.clips.map((c) => c.offsetSeconds + c.durationSeconds)),
+            rate,
+          )
+        : "0s";
+      return `    <media id="${escapeXmlAttr(cm.id)}" name="${escapeXmlAttr(cm.name)}">
+      <sequence format="${escapeXmlAttr(spec.format.id)}" duration="${sequenceDur}" tcStart="0s" tcFormat="NDF">
+        <spine>
+${innerClips}
+        </spine>
+      </sequence>
+    </media>`;
+    })
+    .join("\n");
+
+  // ── Multicam media resources ─────────────────────────────────────────────
+  const multicamMediaXml = (spec.multicamMedia ?? [])
+    .map((mm) => {
+      const anglesXml = mm.angles
+        .map((angle) => {
+          const angleClips = angle.clips
+            .map((c) => {
+              const cOff = secondsToTime(c.offsetSeconds, rate);
+              const cDur = secondsToTime(c.durationSeconds, rate);
+              const cStart = secondsToTime(c.startSeconds, rate);
+              return `          <asset-clip ref="${escapeXmlAttr(c.ref)}" name="${escapeXmlAttr(c.name)}" offset="${cOff}" duration="${cDur}" start="${cStart}"/>`;
+            })
+            .join("\n");
+          return `        <mc-angle name="${escapeXmlAttr(angle.name)}" angleID="${escapeXmlAttr(angle.angleId)}">
+${angleClips}
+        </mc-angle>`;
+        })
+        .join("\n");
+      return `    <media id="${escapeXmlAttr(mm.id)}" name="${escapeXmlAttr(mm.name)}">
+      <multicam format="${escapeXmlAttr(spec.format.id)}" tcStart="0s" tcFormat="NDF" renderColorSpace="${escapeXmlAttr(spec.format.colorSpace)}">
+${anglesXml}
+      </multicam>
+    </media>`;
+    })
+    .join("\n");
+
+  const resourcesXml = [formatXml, effectsXml, assetsXml, compoundMediaXml, multicamMediaXml]
     .filter((s) => s.length > 0)
     .join("\n");
 

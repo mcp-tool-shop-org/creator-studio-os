@@ -34,5 +34,11 @@
   { "query": "export an animated GIF from a Pixelmator video document", "target_tool": "pixelmator_export_animated" },
   { "query": "export a Pixelmator document as an optimized WebP for the web", "target_tool": "pixelmator_export_for_web" },
   { "query": "export a Pixelmator document as an MP4 video file", "target_tool": "pixelmator_export_video" },
-  { "query": "compose a brand card with logo and headline at multiple sizes from a template", "target_tool": "pixelmator_compose_brand_card" }
+  { "query": "compose a brand card with logo and headline at multiple sizes from a template", "target_tool": "pixelmator_compose_brand_card" },
+  { "query": "change the text in a Motion lower-third title template", "target_tool": "motion_template_edit_text" },
+  { "query": "replace title text in a Motion .motn file before rendering", "target_tool": "motion_template_edit_text" },
+  { "query": "add subtitles or closed captions to an FCP timeline", "target_tool": "fcp_fcpxml_build" },
+  { "query": "overlay a B-roll clip on top of the primary timeline in FCP", "target_tool": "fcp_fcpxml_build" },
+  { "query": "build an FCP timeline with a multicam clip from multiple camera angles", "target_tool": "fcp_fcpxml_build" },
+  { "query": "create a compound clip from a sequence of shots and add it to the timeline", "target_tool": "fcp_fcpxml_build" }
 ]

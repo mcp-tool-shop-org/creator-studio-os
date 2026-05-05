@@ -72,6 +72,13 @@ export const ClipSpecSchema = z.object({
     .string()
     .optional()
     .describe("e.g. 'Dialogue.dialogue', 'Music.music', 'Effects.effects'"),
+  lane: z
+    .number()
+    .int()
+    .default(0)
+    .describe(
+      "Timeline lane: 0 = primary spine, positive = above (B-roll overlay), negative = below. FCP may re-bucket lane numbers on import if two anchored clips at the same lane overlap.",
+    ),
 });
 
 export const MotionParamBindingSchema = z.object({
@@ -116,10 +123,101 @@ export const TransitionSpecSchema = z.object({
 });
 export type TransitionSpec = z.infer<typeof TransitionSpecSchema>;
 
+// ── Caption ──────────────────────────────────────────────────────────────────
+// FCP caption element. Role is MANDATORY — a <caption> without a role is
+// silently dropped by FCP's importer (see fcp_caption_lint pre-flight).
+export const CaptionSpecSchema = z.object({
+  kind: z.literal("caption"),
+  name: z.string().default("Caption"),
+  text: z.string(),
+  /** FCP caption role string, e.g. "iTT.iTT-en", "iTT.iTT-ja", "CEA-608.CC1". */
+  role: z.string().describe("Mandatory — FCP silently drops captions without a recognised Role.Subrole"),
+  offsetSeconds: z.number().nonnegative(),
+  durationSeconds: z.number().positive(),
+  lane: z.number().int().default(1),
+});
+export type CaptionSpec = z.infer<typeof CaptionSpecSchema>;
+
+// ── Compound clip (ref-clip) ──────────────────────────────────────────────────
+// References a <media><sequence> resource. The compound media must be listed
+// in ProjectSpec.compoundMedia with a matching id.
+//
+// Propagation-on-save trap: two ref-clips sharing the same mediaId will have
+// edits propagated between them when FCP saves. Use distinct mediaId values
+// for logically independent compounds. fcp_safety_compound detects this.
+export const RefClipSpecSchema = z.object({
+  kind: z.literal("ref-clip"),
+  name: z.string(),
+  /** id of the CompoundMediaSpec this ref-clip references */
+  mediaId: z.string(),
+  offsetSeconds: z.number().nonnegative(),
+  durationSeconds: z.number().positive(),
+  lane: z.number().int().default(0),
+});
+export type RefClipSpec = z.infer<typeof RefClipSpecSchema>;
+
+// ── Compound media resource ────────────────────────────────────────────────────
+// Emits a <media><sequence> in the <resources> block.
+// Inner spine supports asset-clips only (no nesting of ref-clips to avoid
+// circular Zod schema).
+export const CompoundMediaSpecSchema = z.object({
+  id: z.string().describe("Resource id referenced by RefClipSpec.mediaId"),
+  name: z.string(),
+  clips: z.array(ClipSpecSchema).describe("Asset-clips inside the compound's sequence"),
+});
+export type CompoundMediaSpec = z.infer<typeof CompoundMediaSpecSchema>;
+
+// ── Multicam angle ─────────────────────────────────────────────────────────────
+export const MulticamAngleSchema = z.object({
+  name: z.string(),
+  angleId: z.string().describe("Unique identifier for this angle (referenced by mc-source angleID)"),
+  clips: z.array(ClipSpecSchema).describe("Asset-clips in the angle timeline"),
+});
+export type MulticamAngle = z.infer<typeof MulticamAngleSchema>;
+
+// ── Multicam media resource ────────────────────────────────────────────────────
+// Emits a <media><multicam> in the <resources> block.
+export const MulticamMediaSpecSchema = z.object({
+  id: z.string().describe("Resource id referenced by MulticamClipSpec.mediaId"),
+  name: z.string(),
+  angles: z.array(MulticamAngleSchema).min(1),
+});
+export type MulticamMediaSpec = z.infer<typeof MulticamMediaSpecSchema>;
+
+// ── Multicam clip (mc-clip) ───────────────────────────────────────────────────
+// References a <media><multicam> resource.
+// Round-trip cliff: mc-clip is flattened to N compounds by Resolve/Premiere
+// and may multiply to N compound clips on FCP re-import. Document explicitly.
+export const MulticamSourceSchema = z.object({
+  angleId: z.string().describe("angleId of the mc-angle to source from"),
+  srcEnable: z
+    .enum(["all", "audio", "video", "none"])
+    .default("all")
+    .describe("Which streams from this angle to use in the cut"),
+});
+
+export const MulticamClipSpecSchema = z.object({
+  kind: z.literal("mc-clip"),
+  name: z.string(),
+  /** id of the MulticamMediaSpec this mc-clip references */
+  mediaId: z.string(),
+  offsetSeconds: z.number().nonnegative(),
+  durationSeconds: z.number().positive(),
+  lane: z.number().int().default(0),
+  sources: z
+    .array(MulticamSourceSchema)
+    .default([])
+    .describe("Per-angle source assignments. Empty = srcEnable=\"all\" on the primary angle."),
+});
+export type MulticamClipSpec = z.infer<typeof MulticamClipSpecSchema>;
+
 export const SpineItemSchema = z.discriminatedUnion("kind", [
   ClipSpecSchema,
   TitleSpecSchema,
   TransitionSpecSchema,
+  CaptionSpecSchema,
+  RefClipSpecSchema,
+  MulticamClipSpecSchema,
 ]);
 export type SpineItem = z.infer<typeof SpineItemSchema>;
 
@@ -152,5 +250,21 @@ export const ProjectSpecSchema = z.object({
   assets: z.array(AssetSpecSchema).default([]),
   spine: z.array(SpineItemSchema).default([]),
   markers: z.array(MarkerSpecSchema).default([]),
+  compoundMedia: z
+    .array(CompoundMediaSpecSchema)
+    .default([])
+    .describe(
+      "Compound clip media resources. Each emits a <media><sequence> in <resources>. " +
+      "Reference from the spine via RefClipSpec with matching mediaId. " +
+      "Propagation-on-save: two ref-clips sharing one mediaId propagate edits — use distinct ids for independent compounds.",
+    ),
+  multicamMedia: z
+    .array(MulticamMediaSpecSchema)
+    .default([])
+    .describe(
+      "Multicam media resources. Each emits a <media><multicam> in <resources>. " +
+      "Reference from the spine via MulticamClipSpec with matching mediaId. " +
+      "Round-trip cliff: mc-clip is flattened to N compounds by Resolve/Premiere.",
+    ),
 });
 export type ProjectSpec = z.infer<typeof ProjectSpecSchema>;

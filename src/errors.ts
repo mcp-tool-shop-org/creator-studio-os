@@ -35,6 +35,14 @@ export type ErrorCode =
   | "E_APP_STATUS_FAILED"
   | "E_LAYER_NOT_FOUND"
   | "E_LAYER_OP_FAILED"
+  | "E_OZML_GLYPH_COUNT_MISMATCH"
+  | "E_OZML_KERNING_ID_GAP"
+  | "E_OZML_STYLERUN_GAP"
+  | "E_OZML_STYLE_REFERENCE_DEAD"
+  | "E_NON_ASCII"
+  | "E_REF_CLIP_PROPAGATION"
+  | "E_MULTICAM_ANGLE_MISSING"
+  | "E_CAPTION_ROLE_INVALID"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {

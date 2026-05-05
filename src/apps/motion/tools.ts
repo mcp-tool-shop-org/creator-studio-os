@@ -9,6 +9,7 @@ import {
 import { validateTemplate } from "./validate.js";
 import { renderViaCompressor } from "./render.js";
 import { publishToFcp } from "./publish.js";
+import { editText } from "./textEdit.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -251,6 +252,41 @@ export function registerMotionTools(server: McpServer) {
           publish: args.publish,
           matchIndex: args.matchIndex,
           outputPath: args.outputPath,
+        });
+        return ok(result);
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "motion_template_edit_text",
+    "Edit the visible text content of a Motion title template (.motn / .moti). Performs four coordinated atomic edits: replaces CDATA, rebuilds <object> glyph list (one per Unicode codepoint, newlines included), stretches the last <styleRun> to the new length, and verifies all <style> references exist. Five validators run before any write. Use before motion_template_validate to confirm structural integrity. Never call on bundled Apple templates — clone first via motion_template_clone.",
+    {
+      path: z.string().describe("Absolute path to the .motn or .moti file to edit"),
+      newText: z.string().describe("The replacement text string. Newlines (\\n) count as glyphs. Non-ASCII blocked by default — pass allowNonAscii=true to override."),
+      textNodeIndex: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe("Which <text> element to edit when a template has multiple title nodes (0-based, default 0)"),
+      outputPath: z
+        .string()
+        .optional()
+        .describe("Write the modified file here instead of overwriting the source"),
+      allowNonAscii: z
+        .boolean()
+        .optional()
+        .describe("Allow non-ASCII characters. Default false — codepoint encoding for non-ASCII is empirically unverified in OZML until smoke against a Japanese template confirms it."),
+    },
+    async (args) => {
+      try {
+        const result = await editText(args.path, args.newText, {
+          textNodeIndex: args.textNodeIndex,
+          outputPath: args.outputPath,
+          allowNonAscii: args.allowNonAscii,
         });
         return ok(result);
       } catch (e) {

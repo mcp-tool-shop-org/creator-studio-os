@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] — 2026-05-05
+
+### Added (Phase 2.2 — Motion text editor + FCP timeline shapes)
+
+**1 new Motion tool + 4 FCP timeline shape extensions:**
+
+- **2.2.1 `motion_template_edit_text` (1 tool):** `OzmlTextEditor` — replaces the visible text in a Motion title template (.motn/.moti) with four coordinated atomic edits: CDATA replacement, `<object>` glyph list rebuild (one per Unicode codepoint, newlines included per invariant 15), `<styleRun>` last-run stretch, plus five validators (glyph-count, kerning-sequence, styleRun-contiguity, style-references, ASCII-vs-Unicode gate). Atomic temp-file + rename — a half-written .motn never lands on disk. `textNodeIndex` selects the nth text block in multi-title templates. Non-ASCII gated by `allowNonAscii` until smoke against a Japanese template confirms codepoint encoding. Protocol step 3 of `steam_trailer_minimal`.
+
+- **2.2.2 FCP anchored asset-clips:** `ClipSpec` gains a `lane` field (default 0). `lane != 0` emits the clip as a child of the primary spine clip whose time range contains it — standard FCPXML connected-clip pattern for B-roll overlays. `checkAnchorSafety` tightened to detect cross-type lane collisions (title vs. anchored clip on same lane).
+
+- **2.2.3 FCP compound clips (`ref-clip`):** New `RefClipSpec` (kind: `ref-clip`) + `CompoundMediaSpec` array on `ProjectSpec`. Builder emits `<media><sequence>` in `<resources>` + `<ref-clip ref="...">` in the spine. `validateCompoundSafety` tightened: detects two ref-clips sharing the same `mediaId` (the propagation-on-save trap documented in the FCP research).
+
+- **2.2.4 FCP multicam clips (`mc-clip`):** New `MulticamClipSpec` (kind: `mc-clip`) + `MulticamMediaSpec` array. Builder emits `<media><multicam>` with per-angle `<mc-angle>` elements + `<mc-clip>` in the spine with `<mc-source>` angle assignments. Round-trip cliff documented: mc-clip is flattened to N compounds by Resolve/Premiere.
+
+- **2.2.4b FCP captions (`<caption>`):** New `CaptionSpec` (kind: `caption`) with mandatory `role` attribute. Builder emits `<caption role="..." ...>`. `lintCaptions` tightened: CaptionSpec items checked at builder time for valid `Role.Subrole` format AND recognised FCP prefix (`iTT.`, `CEA-608.`, `SRT.`) — catching silent-drop before DTD validation.
+
+**New error codes:** `E_OZML_GLYPH_COUNT_MISMATCH`, `E_OZML_KERNING_ID_GAP`, `E_OZML_STYLERUN_GAP`, `E_OZML_STYLE_REFERENCE_DEAD`, `E_NON_ASCII`, `E_REF_CLIP_PROPAGATION`, `E_MULTICAM_ANGLE_MISSING`, `E_CAPTION_ROLE_INVALID`.
+
+### Internal
+
+- 317 unit tests (was 274) — 2 new test files: `motion-text-edit.test.ts` (20 tests), `fcpxml-shapes.test.ts` (23 tests).
+- 6 new tool-compass intent fixtures.
+- Total: **102 MCP tools** (was 101).
+
 ## [1.6.3] — 2026-05-05
 
 ### Added (Phase 2.1 — Pixelmator full sdef)
