@@ -22,6 +22,8 @@ import {
   runSafetyPreflights,
 } from "./safety.js";
 import { readPublishedParams, buildParamBinding } from "./motion-bind.js";
+import { parseFcpxml } from "../../fcpxml/parser.js";
+import { diffTimelines } from "../../fcpxml/diff.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -456,6 +458,109 @@ export function registerFcpTools(server: McpServer) {
           return ok({ buildTime: catalog.buildTime, count: 1, entries: [found] });
         }
         return ok({ buildTime: catalog.buildTime, count: entries.length, entries });
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_round_trip_diff",
+    "Compare two FCPXML documents and return a structured diff of the 12 known FCP round-trip transformation types (clip offsets, durations, title text/params, roles, transitions, assets, format). Use this to verify that FCP didn't silently mutate a timeline you imported.",
+    {
+      beforePath: z
+        .string()
+        .describe("Absolute path to the original FCPXML (what you built and imported)"),
+      afterPath: z
+        .string()
+        .describe("Absolute path to the FCPXML exported from FCP after round-trip"),
+    },
+    async ({ beforePath, afterPath }) => {
+      try {
+        const { readFile } = await import("node:fs/promises");
+        const [beforeXml, afterXml] = await Promise.all([
+          readFile(beforePath, "utf-8").catch(() => {
+            throw new CreatorStudioError(
+              "E_FCPXML_PARSE_FAILED",
+              `Cannot read before file: ${beforePath}`,
+            );
+          }),
+          readFile(afterPath, "utf-8").catch(() => {
+            throw new CreatorStudioError(
+              "E_FCPXML_PARSE_FAILED",
+              `Cannot read after file: ${afterPath}`,
+            );
+          }),
+        ]);
+        const before = parseFcpxml(beforeXml);
+        const after = parseFcpxml(afterXml);
+        return ok(diffTimelines(before, after));
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_round_trip_capture",
+    "Extract FCPXML from inside a Final Cut Pro library package (.fcpbundle). FCP stores each project as an object.fcpxml (or .fcpxml) file inside the bundle — this tool finds and reads it without requiring FCP to be running. Returns the raw XML and the path it was found at.",
+    {
+      libraryPath: z
+        .string()
+        .describe("Absolute path to a .fcpbundle library package"),
+      projectName: z
+        .string()
+        .optional()
+        .describe("If provided, only return the project matching this name (case-insensitive)"),
+    },
+    async ({ libraryPath, projectName }) => {
+      try {
+        const { readFile, readdir, stat } = await import("node:fs/promises");
+        const { join: pjoin } = await import("node:path");
+
+        async function findFcpxmlFiles(dir: string, depth = 0): Promise<string[]> {
+          if (depth > 8) return [];
+          let entries: string[];
+          try {
+            entries = await readdir(dir);
+          } catch {
+            return [];
+          }
+          const results: string[] = [];
+          for (const entry of entries) {
+            const full = pjoin(dir, entry);
+            let s;
+            try { s = await stat(full); } catch { continue; }
+            if (s.isDirectory()) {
+              results.push(...await findFcpxmlFiles(full, depth + 1));
+            } else if (entry === "object.fcpxml" || entry.endsWith(".fcpxml")) {
+              results.push(full);
+            }
+          }
+          return results;
+        }
+
+        const found = await findFcpxmlFiles(libraryPath);
+        if (found.length === 0) {
+          throw new CreatorStudioError(
+            "E_FCPXML_PARSE_FAILED",
+            `No FCPXML files found inside ${libraryPath}`,
+            "Ensure the path is a valid .fcpbundle and the library has at least one project.",
+          );
+        }
+
+        if (projectName) {
+          const lower = projectName.toLowerCase();
+          const matched = found.filter((p) => p.toLowerCase().includes(lower));
+          if (matched.length === 0) {
+            return ok({ found: found.length, files: found, xml: null, path: null });
+          }
+          const xml = await readFile(matched[0], "utf-8");
+          return ok({ found: found.length, files: found, xml, path: matched[0] });
+        }
+
+        const xml = await readFile(found[0], "utf-8");
+        return ok({ found: found.length, files: found, xml, path: found[0] });
       } catch (e) {
         return err(e);
       }
