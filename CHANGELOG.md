@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] — 2026-05-05
+
+### Added (Phase 2.0 — Foundation infrastructure)
+
+- **`csos_app_status`** — unified app health tool. Single MCP tool with `app` param dispatching to all 8 Creator Studio apps. Returns `{ running, healthy, version, frontDocument, queueDepth, inFlightJobs, lastError }`. Compressor probes the queue via `-monitor` (2.5s timeout); FCP/Pixelmator/iWork query front-document via AppleScript; Motion/Logic check process existence. `app: "all"` queries all 8 in parallel. Dry-run mode loads fixtures from `tests/fixtures/app-status/`. (`src/apps/status.ts`, `src/apps/status-tool.ts`)
+- **`src/runners/awaitOutput.ts`** — generalized output-file completion primitive. `awaitOutputFile({ pathStem, dir, timeoutSec, settledMs })` polls a directory for any file whose stem matches, returns when size is stable. Replaces identical inline loops in smoke Phase 1 and Phase 2. Stability check prevents returning partially-written files.
+- **`src/runners/withDaemonRecovery.ts`** — generalized daemon-state recovery wrapper. `withDaemonRecovery(profile, fn)` catches errors matching a `RecoveryProfile.badStatePattern`, runs `recover()`, retries `fn()` once. One retry; non-matching errors pass through immediately.
+- **Per-app recovery profiles** (`src/apps/<app>/recovery.ts`). Compressor: "Unable to submit to queue" → `killall Compressor` + 2s wait, extracted from the inline v1.6 retry. Motion/FCP/Logic/Pixelmator/Keynote/Pages/Numbers: typed stubs (no known bad states yet).
+- **`creator-studio-os doctor`** — one-shot diagnostic dump. Reports version, Node, all 8 app versions + running state, tool-compass path + reachability, data dir stats. `--json` for machine-readable output.
+- **`creator-studio-os ledger <project>`** — ledger reader CLI. `--since 1h/30m/2d`, `--tool <name>`, `--errors`, `--tail N`, `--json`. Reads `.csos/ledger.jsonl` and formats a human-readable session log.
+- **`tests/fixtures/app-status/`** — 8 fixture files (one per app), used by dry-run mode and unit tests.
+- **`src/ledger/reader.ts`** — `readLedger()` + `parseSince()` + `formatLedger()`.
+
+### Changed
+
+- **`src/apps/compressor/cli.ts`** — `encodeJob` refactored to use `withDaemonRecovery(compressorRecovery, fn)` instead of inline recursive retry. Public API unchanged (`_retried` parameter removed — was an implementation detail).
+- **`src/smoke/phases/p1-compressor-monitor.ts`** — inline output-file poll replaced with `awaitOutputFile`.
+- **`src/smoke/phases/p2-motion-render.ts`** — inline output-file poll replaced with `awaitOutputFile`.
+- **`src/server.ts`** — `registerStatusTool()` added; version bumped to 1.6.1.
+
+### Internal
+
+- 205 unit tests (was 169) — added `app-status`, `await-output`, `daemon-recovery`, `ledger-reader` test files.
+- 23 test files total.
+
 ## [1.6.1] — 2026-05-05
 
 ### Added

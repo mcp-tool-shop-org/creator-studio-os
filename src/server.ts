@@ -9,11 +9,12 @@ import { registerMotionTools } from "./apps/motion/tools.js";
 import { registerKeynoteTools } from "./apps/keynote/tools.js";
 import { registerPagesTools } from "./apps/pages/tools.js";
 import { registerNumbersTools } from "./apps/numbers/tools.js";
+import { registerStatusTool } from "./apps/status-tool.js";
 
 async function main() {
   const server = new McpServer({
     name: "creator-studio-os",
-    version: "1.5.0",
+    version: "1.6.1",
   });
 
   registerFcpTools(server);
@@ -24,6 +25,7 @@ async function main() {
   registerKeynoteTools(server);
   registerPagesTools(server);
   registerNumbersTools(server);
+  registerStatusTool(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

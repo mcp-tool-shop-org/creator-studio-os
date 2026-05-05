@@ -1,10 +1,9 @@
-import { spawn, execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
+import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import { CreatorStudioError } from "../../errors.js";
 import { loadConfig } from "../../config.js";
+import { withDaemonRecovery } from "../../runners/withDaemonRecovery.js";
+import { compressorRecovery } from "./recovery.js";
 
 export interface EncodeJob {
   jobPath: string;
@@ -51,12 +50,7 @@ async function ensureExists(path: string, code: "E_JOB_NOT_FOUND" | "E_SETTING_N
   }
 }
 
-export async function encodeJob(job: EncodeJob, _retried = false): Promise<EncodeResult> {
-  const cfg = loadConfig();
-  await ensureExists(cfg.compressorBinaryPath, "E_COMPRESSOR_NOT_FOUND");
-  await ensureExists(job.jobPath, "E_JOB_NOT_FOUND");
-  await ensureExists(job.settingPath, "E_SETTING_NOT_FOUND");
-
+async function encodeJobOnce(job: EncodeJob, cfg: ReturnType<typeof loadConfig>): Promise<EncodeResult> {
   const args: string[] = [];
   if (job.computerGroup) args.push("-computergroup", job.computerGroup);
   if (job.batchName) args.push("-batchname", job.batchName);
@@ -94,16 +88,6 @@ export async function encodeJob(job: EncodeJob, _retried = false): Promise<Encod
         resolve({ jobId, batchId, rawOutput: merged });
       } else {
         const errorMsg = merged || "no output";
-        // Compressor daemon can land in a bad state and refuse new submissions.
-        // Reset: kill the daemon (it respawns on next CLI call), wait 2s, retry once.
-        if (!_retried && /Unable to submit to queue/i.test(errorMsg)) {
-          execFileAsync("killall", ["Compressor"])
-            .catch(() => {})
-            .then(() => new Promise((r) => setTimeout(r, 2000)))
-            .then(() => encodeJob(job, true))
-            .then(resolve, reject);
-          return;
-        }
         reject(
           new CreatorStudioError(
             "E_COMPRESSOR_FAILED",
@@ -114,4 +98,13 @@ export async function encodeJob(job: EncodeJob, _retried = false): Promise<Encod
       }
     });
   });
+}
+
+export async function encodeJob(job: EncodeJob): Promise<EncodeResult> {
+  const cfg = loadConfig();
+  await ensureExists(cfg.compressorBinaryPath, "E_COMPRESSOR_NOT_FOUND");
+  await ensureExists(job.jobPath, "E_JOB_NOT_FOUND");
+  await ensureExists(job.settingPath, "E_SETTING_NOT_FOUND");
+  // Daemon-state recovery: if "Unable to submit to queue", kill + wait 2s + retry once.
+  return withDaemonRecovery(compressorRecovery, () => encodeJobOnce(job, cfg));
 }

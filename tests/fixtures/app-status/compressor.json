@@ -1,0 +1,8 @@
+{
+  "app": "compressor",
+  "running": false,
+  "healthy": false,
+  "version": "5.2",
+  "queueDepth": 0,
+  "inFlightJobs": 0
+}

@@ -10,5 +10,7 @@
   { "query": "import an FCPXML file into Final Cut Pro", "target_tool": "fcp_fcpxml_import" },
   { "query": "find every effect and title installed on this Mac", "target_tool": "fcp_effects_catalog" },
   { "query": "check whether an FCPXML survived FCP round-trip cleanly", "target_tool": "fcp_round_trip_diff" },
-  { "query": "resize an image and export to WebP", "target_tool": "pixelmator_resize" }
+  { "query": "resize an image and export to WebP", "target_tool": "pixelmator_resize" },
+  { "query": "check if Final Cut Pro is running and healthy", "target_tool": "csos_app_status" },
+  { "query": "how many Compressor encode jobs are currently queued", "target_tool": "csos_app_status" }
 ]

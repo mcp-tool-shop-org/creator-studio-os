@@ -1,0 +1,6 @@
+{
+  "app": "pixelmator",
+  "running": false,
+  "healthy": false,
+  "version": "3.7"
+}

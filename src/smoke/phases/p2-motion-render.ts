@@ -5,11 +5,12 @@
  * validates clean (0 violations), renders headlessly via Compressor,
  * waits for completion, asserts output file exists and is non-empty.
  */
-import { access, mkdir, stat, readdir } from "node:fs/promises";
+import { access, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { cloneTemplate, inspectTemplate, setParam } from "../../apps/motion/ozml.js";
 import { validateTemplate } from "../../apps/motion/validate.js";
 import { renderViaCompressor } from "../../apps/motion/render.js";
+import { awaitOutputFile } from "../../runners/awaitOutput.js";
 import { appendLedger } from "../../ledger/index.js";
 import type { PhaseResult } from "../report.js";
 import type { SmokeOpts } from "../index.js";
@@ -74,34 +75,21 @@ export async function runPhase2(opts: SmokeOpts): Promise<PhaseResult> {
     const outPath = join(outDir, outStem + ".mov"); // dirname + stem only; extension replaced by Compressor
     await renderViaCompressor({ motnPath: cloneDst, settingPath, locationPath: outPath, batchName: "csos-smoke-phase2" });
 
-    const FILE_POLL_MS = 500;
-    const FILE_TIMEOUT_MS = 180_000;
-    let actualOutPath = "";
-    const fileDeadline = Date.now() + FILE_TIMEOUT_MS;
-    while (Date.now() < fileDeadline) {
-      const files = await readdir(outDir).catch(() => [] as string[]);
-      const match = files.find((f) => f.startsWith(outStem + "."));
-      if (match) {
-        const s = await stat(join(outDir, match)).catch(() => null);
-        if (s && s.size > 0) { actualOutPath = join(outDir, match); break; }
-      }
-      await new Promise((r) => setTimeout(r, FILE_POLL_MS));
-    }
-
-    if (!actualOutPath) {
+    let outResult: { path: string; sizeBytes: number };
+    try {
+      outResult = await awaitOutputFile({ pathStem: outStem, dir: outDir, timeoutSec: 180 });
+    } catch {
       const durationMs = Date.now() - start;
       await appendLedger({ ts: new Date().toISOString(), tool: "smoke:phase2", projectName: opts.smokeProjectName, args: { param: numericParam.name }, error: { code: "E_COMPRESSOR_MONITOR_FAILED", message: "Output file not found within 180s" }, durationMs });
-      return { id, name, status: "fail", durationMs, detail: `Render output not found after ${FILE_TIMEOUT_MS / 1000}s (stem: ${outStem})` };
+      return { id, name, status: "fail", durationMs, detail: `Render output not found after 180s (stem: ${outStem})` };
     }
 
-    const outputStat = await stat(actualOutPath);
-
-    const outputFile = actualOutPath.split("/").pop()!;
+    const outputFile = outResult.path.split("/").pop()!;
     const durationMs = Date.now() - start;
-    await appendLedger({ ts: new Date().toISOString(), tool: "smoke:phase2", projectName: opts.smokeProjectName, args: { param: numericParam.name }, result: { outputFile, sizeBytes: outputStat.size }, durationMs });
+    await appendLedger({ ts: new Date().toISOString(), tool: "smoke:phase2", projectName: opts.smokeProjectName, args: { param: numericParam.name }, result: { outputFile, sizeBytes: outResult.sizeBytes }, durationMs });
     return {
       id, name, status: "pass", durationMs,
-      detail: `Mutated "${numericParam.name}" (${oldVal}→${newVal}), 0 violations, rendered → ${outputFile} (${outputStat.size} bytes)`,
+      detail: `Mutated "${numericParam.name}" (${oldVal}→${newVal}), 0 violations, rendered → ${outputFile} (${outResult.sizeBytes} bytes)`,
     };
 
   } catch (e) {

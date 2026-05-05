@@ -1,0 +1,6 @@
+{
+  "app": "fcp",
+  "running": false,
+  "healthy": false,
+  "version": "12.2"
+}

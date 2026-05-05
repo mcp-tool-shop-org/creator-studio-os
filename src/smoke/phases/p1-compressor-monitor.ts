@@ -16,6 +16,7 @@ import { join, dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodeJob } from "../../apps/compressor/cli.js";
 import { monitorStream } from "../../apps/compressor/monitor.js";
+import { awaitOutputFile } from "../../runners/awaitOutput.js";
 import { appendLedger } from "../../ledger/index.js";
 import type { PhaseResult } from "../report.js";
 import type { SmokeOpts } from "../index.js";
@@ -101,37 +102,31 @@ export async function runPhase1(opts: SmokeOpts): Promise<PhaseResult> {
     })();
 
     // Poll by stem — Compressor replaces our extension with its own (.mp4, .mov, .m4v)
-    const FILE_POLL_MS = 500;
-    const FILE_TIMEOUT_MS = 120_000;
-    let actualOutPath = "";
-    const fileDeadline = Date.now() + FILE_TIMEOUT_MS;
-    const { readdir: readdirFn } = await import("node:fs/promises");
-    while (Date.now() < fileDeadline) {
-      const files = await readdirFn(outDir).catch(() => [] as string[]);
-      const match = files.find((f) => f.startsWith(outStem + "."));
-      if (match) {
-        const s = await stat(join(outDir, match)).catch(() => null);
-        if (s && s.size > 0) { actualOutPath = join(outDir, match); break; }
-      }
-      await new Promise((r) => setTimeout(r, FILE_POLL_MS));
+    let outResult: { path: string; sizeBytes: number } | null = null;
+    try {
+      [outResult] = await Promise.all([
+        awaitOutputFile({ pathStem: outStem, dir: outDir, timeoutSec: 120 }),
+        monitorDone,
+      ]);
+    } catch {
+      await monitorDone;
     }
-    await monitorDone;
 
-    if (!actualOutPath) {
+    if (!outResult) {
       const durationMs = Date.now() - start;
       await appendLedger({ ts: new Date().toISOString(), tool: "smoke:phase1", projectName: opts.smokeProjectName, args: { jobId: job.jobId }, error: { code: "E_COMPRESSOR_MONITOR_FAILED", message: "Output file not found within timeout" }, durationMs });
-      return { id, name, status: "fail", durationMs, detail: `Output file not found after ${FILE_TIMEOUT_MS / 1000}s. jobId=${job.jobId}` };
+      return { id, name, status: "fail", durationMs, detail: `Output file not found after 120s. jobId=${job.jobId}` };
     }
 
-    const outStat = await stat(actualOutPath);
+    const actualOutPath = outResult.path;
     const monitorNote = frames.length > 0
       ? `${frames.length} monitor frame(s), status=${terminalStatus}`
       : "0 monitor frames (encode completed before poll — Apple Silicon fast-encode path)";
 
     const outputFile = actualOutPath.split("/").pop()!;
     const durationMs = Date.now() - start;
-    await appendLedger({ ts: new Date().toISOString(), tool: "smoke:phase1", projectName: opts.smokeProjectName, args: { jobId: job.jobId }, result: { frames: frames.length, terminalStatus: terminalStatus || "completed-inferred", outputFile, outputBytes: outStat.size, fixtureResult }, durationMs });
-    return { id, name, status: "pass", durationMs, detail: `Output ${outputFile} (${outStat.size} bytes). ${monitorNote}. jobId=${job.jobId}` };
+    await appendLedger({ ts: new Date().toISOString(), tool: "smoke:phase1", projectName: opts.smokeProjectName, args: { jobId: job.jobId }, result: { frames: frames.length, terminalStatus: terminalStatus || "completed-inferred", outputFile, outputBytes: outResult.sizeBytes, fixtureResult }, durationMs });
+    return { id, name, status: "pass", durationMs, detail: `Output ${outputFile} (${outResult.sizeBytes} bytes). ${monitorNote}. jobId=${job.jobId}` };
 
   } catch (e) {
     const durationMs = Date.now() - start;

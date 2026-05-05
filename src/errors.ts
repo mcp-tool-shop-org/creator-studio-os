@@ -32,6 +32,7 @@ export type ErrorCode =
   | "E_ANCHOR_COLLISION"
   | "E_COMPRESSOR_MONITOR_FAILED"
   | "E_LEDGER_WRITE_FAILED"
+  | "E_APP_STATUS_FAILED"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {
