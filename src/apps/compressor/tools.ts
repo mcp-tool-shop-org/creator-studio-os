@@ -154,7 +154,7 @@ export function registerCompressorTools(server: McpServer) {
 
   server.tool(
     "compressor_encode_project",
-    "Resolve a project, encode a file from its out/ or footage/ tree using a named setting, write to out/. Convenience wrapper around compressor_encode.",
+    "Convenience wrapper around compressor_encode for csos project-scoped workflows. Resolves project paths and writes output to the project's out/ directory. For encoding an arbitrary file, use compressor_encode directly.",
     {
       project: z.string(),
       sourceFilename: z

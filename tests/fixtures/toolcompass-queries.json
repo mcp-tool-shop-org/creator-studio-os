@@ -1,0 +1,14 @@
+[
+  { "query": "encode a video file with a Compressor preset", "target_tool": "compressor_encode" },
+  { "query": "monitor an active encode for live progress", "target_tool": "compressor_monitor_stream" },
+  { "query": "list available Compressor encoding presets", "target_tool": "compressor_settings_list" },
+  { "query": "set a parameter value on a Motion template", "target_tool": "motion_template_set_param" },
+  { "query": "render a Motion template headlessly to a video file", "target_tool": "motion_render_via_compressor" },
+  { "query": "publish a Motion parameter so it appears in FCP inspector", "target_tool": "motion_publish_to_fcp" },
+  { "query": "validate that a Motion template will not corrupt on import", "target_tool": "motion_template_validate" },
+  { "query": "build a Final Cut Pro timeline with clips and titles", "target_tool": "fcp_fcpxml_build" },
+  { "query": "import an FCPXML file into Final Cut Pro", "target_tool": "fcp_fcpxml_import" },
+  { "query": "find every effect and title installed on this Mac", "target_tool": "fcp_effects_catalog" },
+  { "query": "check whether an FCPXML survived FCP round-trip cleanly", "target_tool": "fcp_round_trip_diff" },
+  { "query": "resize an image and export to WebP", "target_tool": "pixelmator_resize" }
+]

@@ -8,7 +8,7 @@ MCP control plane for Apple Creator Studio apps.
 
 `creator-studio-os` is a Model Context Protocol server that drives **Final Cut Pro** (and, in later versions, Compressor, Logic Pro, Motion, Pixelmator Pro, Keynote, Pages, Numbers) from Claude or any MCP client. It reads from a canonical project directory of footage / audio / images / brand / refs, builds **FCPXML 1.14** documents programmatically, validates them against the DTD bundled with Final Cut Pro, and hands them to FCP for import.
 
-> Status: **v1.4.0 — All 8 Apple Creator Studio apps wired.** FCP authoring + Compressor encoding + Pixelmator image ops + Logic / Motion file handoff + Keynote / Pages / Numbers export. macOS only. See [Roadmap](#roadmap).
+> Status: **v1.6.1 — All 8 Apple Creator Studio apps wired. 7-phase smoke harness + tool-compass discoverability regression.** FCP authoring + Compressor encoding + Pixelmator image ops + Logic / Motion file handoff + Keynote / Pages / Numbers export. macOS only. See [Roadmap](#roadmap).
 
 ---
 
@@ -209,6 +209,42 @@ All three iWork apps share a near-identical AppleScript shape (open / close / ex
 See [`docs/reference/effect-uids.md`](./docs/reference/effect-uids.md) for the title effect UID catalog.
 
 The full Zod schema lives in [`src/fcpxml/types.ts`](./src/fcpxml/types.ts).
+
+## Recommended setup with tool-compass
+
+[tool-compass](https://github.com/mcp-tool-shop-org/tool-compass) is a semantic HNSW gateway that lets an LLM find the right tool from natural-language intent rather than scanning all 78 tools on every call. Recommended for any workflow that spans multiple apps.
+
+**Install:**
+```bash
+pip install tool-compass           # or: pip install -e venv/
+```
+
+**Config** (`compass_config.json`):
+```json
+{
+  "backends": {
+    "csos": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/creator-studio-os/dist/cli.js", "serve"]
+    }
+  },
+  "embedding_model": "nomic-embed-text",
+  "default_top_k": 3,
+  "min_confidence": 0.0
+}
+```
+
+**First run:**
+```bash
+tool-compass sync --force          # builds the HNSW index
+tool-compass search "render a Motion template headlessly to a video file"
+# → motion_render_via_compressor (score 0.82)
+```
+
+The smoke harness validates 12 representative queries in Phase 7. Any description change that drops a target out of top-3 with score > 0.4 fails the smoke. See [`docs/reference/tool-descriptions.md`](./docs/reference/tool-descriptions.md) for the description conventions that keep retrieval accurate.
+
+---
 
 ## Permissions
 

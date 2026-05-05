@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] — 2026-05-05
+
+### Added
+
+- **Smoke Phase 7 — tool-compass discoverability regression** (`src/smoke/phases/p7-toolcompass-discoverability.ts`): syncs csos's 78 tool descriptions into a tool-compass HNSW index and runs 12 representative intent queries. Each query must return its target tool in the top-3 results with score > 0.4. Catches description drift that breaks semantic retrieval. Dry-run mode for CI.
+- **`tests/fixtures/toolcompass-queries.json`** — 12 query→target fixture pairs used by Phase 7 and open for inspection.
+- **`docs/reference/tool-descriptions.md`** — verb-first / wrapper-lead / partial-step description conventions. Phase 7 enforces these; any drift that breaks retrieval fails the smoke.
+- **README "Recommended setup with tool-compass"** section — `compass_config.json` snippet, install, and rationale.
+
+### Changed
+
+- **`compressor_encode_project`** description leads with "Convenience wrapper around compressor_encode" (was buried at end) to prevent semantic collision with `compressor_encode` in retrieval.
+- **`fcp_fcpxml_build`** description now leads with timeline vocabulary: "Author a Final Cut Pro timeline (clips, titles, transitions, audio)". Pre-flight detail moved to the `skipPreflight` arg description.
+- **`pixelmator_resize`** description now ends with "Doesn't write to disk — pair with pixelmator_export for output" to route export queries correctly.
+- **`CLAUDE.md`** — new "Before editing any tool description string" section cites `docs/reference/tool-descriptions.md`.
+
+### Internal
+
+- 169 unit tests (was 168) — Phase 7 dry-run harness test added.
+- Smoke harness extended from 6 to 7 phases in `src/smoke/index.ts`.
+
 ## [1.6.0] — 2026-05-05
 
 ### Added (19 new tools — Phase 1 automation chain complete)

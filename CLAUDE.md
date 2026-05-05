@@ -10,6 +10,10 @@
 - [`automation-permission.md`](./docs/reference/automation-permission.md) — when macOS prompts vs. doesn't
 - [`compressor-cli.md`](./docs/reference/compressor-cli.md) — why Compressor is deferred
 
+## Before editing any tool description string
+
+Read [`docs/reference/tool-descriptions.md`](./docs/reference/tool-descriptions.md) first. It defines the verb-first / wrapper-lead / partial-step conventions that keep tool-compass retrieval accurate. Phase 7 of the smoke harness enforces these: a description that drops its target tool out of top-3 (score > 0.4) fails the smoke. Fix the description — don't weaken the gate.
+
 ## Document what you learn
 
 When you discover something non-obvious about FCP, Compressor, Logic, Motion, Pixelmator, Keynote, Pages, or Numbers — *especially* something that took you fifteen minutes to figure out — **add or update an entry in `docs/reference/`** before moving on. The file format is intentionally lightweight: lead with the non-obvious fact, cite the evidence (file paths, sdef contents, terminal output), date the observation, note the FCP version. Future-Claude (and future-Mike) will work faster because of it.

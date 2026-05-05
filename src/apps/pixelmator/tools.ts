@@ -151,7 +151,7 @@ export function registerPixelmatorTools(server: McpServer) {
 
   server.tool(
     "pixelmator_resize",
-    "Resize an open document. Width / height in pixels; resolution in pixels per inch.",
+    "Change the dimensions of an open Pixelmator document. Width / height in pixels; resolution in PPI. Doesn't write to disk — pair with pixelmator_export for output.",
     {
       documentName: z.string(),
       width: z.number().int().positive().optional(),

@@ -131,7 +131,7 @@ export function registerFcpTools(server: McpServer) {
 
   server.tool(
     "fcp_fcpxml_build",
-    "Build an FCPXML 1.14 document (1.13 also supported) from a JSON project spec. Runs safety pre-flights (compound-clip overlap, caption roles, anchor collisions) unless skipPreflight=true. Returns the XML string without writing it.",
+    "Author a Final Cut Pro timeline (clips, titles, transitions, audio) from a JSON project spec. Emits FCPXML 1.14 (1.13 also supported). Returns the XML string without writing it.",
     {
       spec: z.unknown().describe("ProjectSpec — see schema in repo docs"),
       allowUnsafe: z
@@ -141,7 +141,7 @@ export function registerFcpTools(server: McpServer) {
       skipPreflight: z
         .boolean()
         .optional()
-        .describe("Skip safety pre-flights entirely (fastest path)"),
+        .describe("Skip safety pre-flights (compound-clip overlap, caption roles, anchor collisions). Fastest path — omit for production use."),
     },
     async ({ spec, allowUnsafe, skipPreflight }) => {
       try {

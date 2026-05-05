@@ -34,6 +34,7 @@ import { runPhase3 } from "./phases/p3-motion-publish-catalog.js";
 import { runPhase4 } from "./phases/p4-killer-chain.js";
 import { runPhase5 } from "./phases/p5-round-trip-diff.js";
 import { runPhase6 } from "./phases/p6-ledger.js";
+import { runPhase7 } from "./phases/p7-toolcompass-discoverability.js";
 import { drainCompressorQueue } from "../apps/compressor/monitor.js";
 
 export interface SmokeOpts {
@@ -90,6 +91,11 @@ export async function runSmoke(args: string[]): Promise<void> {
   const { ledgerCount, ...p6result } = p6;
   phases.push(p6result);
   printPhaseResult(p6result);
+
+  // Phase 7 — tool-compass discoverability regression
+  const p7 = await runPhase7(opts);
+  phases.push(p7);
+  printPhaseResult(p7);
 
   const { passed, failed, skipped, overallStatus } = summarize(phases);
 
