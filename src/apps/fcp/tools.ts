@@ -13,7 +13,7 @@ import {
   readProjectMetadata,
 } from "./library.js";
 import { openFcp, activateFcp, isFcpRunning } from "./app.js";
-import { openWithApp } from "../../runners/openApp.js";
+import { runApp } from "../../runners/runApp.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -183,7 +183,7 @@ export function registerFcpTools(server: McpServer) {
     async ({ path }) => {
       try {
         const cfg = loadConfig();
-        await openWithApp(path, { appBundleId: cfg.fcpBundleId });
+        await runApp.open(path, { appBundleId: cfg.fcpBundleId });
         return ok({ opened: path });
       } catch (e) {
         return err(e);
@@ -222,7 +222,7 @@ export function registerFcpTools(server: McpServer) {
         await mkdir(proj.paths.fcp, { recursive: true });
         const out = join(proj.paths.fcp, filename);
         await writeFile(out, built.xml, "utf-8");
-        await openWithApp(out, { appBundleId: cfg.fcpBundleId });
+        await runApp.open(out, { appBundleId: cfg.fcpBundleId });
 
         return ok({ path: out, validation, opened: true });
       } catch (e) {
