@@ -12,5 +12,12 @@
   { "query": "check whether an FCPXML survived FCP round-trip cleanly", "target_tool": "fcp_round_trip_diff" },
   { "query": "resize an image and export to WebP", "target_tool": "pixelmator_resize" },
   { "query": "check if Final Cut Pro is running and healthy", "target_tool": "csos_app_status" },
-  { "query": "how many Compressor encode jobs are currently queued", "target_tool": "csos_app_status" }
+  { "query": "how many Compressor encode jobs are currently queued", "target_tool": "csos_app_status" },
+  { "query": "add a new text layer to a Pixelmator document", "target_tool": "pixelmator_make_layer" },
+  { "query": "change the opacity and blend mode of a Pixelmator layer", "target_tool": "pixelmator_set_layer_properties" },
+  { "query": "move a layer to the front of the Pixelmator layer stack", "target_tool": "pixelmator_layer_order" },
+  { "query": "group several layers together in Pixelmator", "target_tool": "pixelmator_group_layers" },
+  { "query": "ungroup a layer group in Pixelmator", "target_tool": "pixelmator_ungroup" },
+  { "query": "change the font size and color on a text layer in Pixelmator", "target_tool": "pixelmator_set_layer_text" },
+  { "query": "draw a filled rectangle shape in Pixelmator", "target_tool": "pixelmator_make_shape" }
 ]

@@ -15,6 +15,16 @@ import {
 } from "./document.js";
 import { isPixelmatorRunning, openPixelmator } from "./app.js";
 import { CreatorStudioError } from "../../errors.js";
+import { BLEND_MODES } from "./blendModes.js";
+import {
+  makeLayer,
+  makeShape,
+  setLayerProperties,
+  setLayerOrder,
+  groupLayers,
+  ungroupLayer,
+  setLayerText,
+} from "./layers.js";
 
 function ok<T>(value: T) {
   return {
@@ -275,6 +285,167 @@ export function registerPixelmatorTools(server: McpServer) {
       } catch (e) {
         return err(e);
       }
+    },
+  );
+
+  // ── 2.1.1 Layer authoring ────────────────────────────────────────────────────
+
+  server.tool(
+    "pixelmator_make_layer",
+    "Add a new layer to an open Pixelmator document. kind=\"image\" places a raster image file; kind=\"text\" creates an editable text layer; kind=\"shape\" creates a blank shape layer. Returns the name Pixelmator assigned.",
+    {
+      documentName: z.string().describe("Name of the open document (without file extension)"),
+      kind: z.enum(["image", "text", "shape"]).describe("Layer type to create"),
+      name: z.string().optional().describe("Layer name (defaults to Pixelmator's auto-name)"),
+      imagePath: z.string().optional().describe("Absolute POSIX path to image file — required when kind=image"),
+      textContent: z.string().optional().describe("Initial text content — required when kind=text"),
+      font: z.string().optional().describe("PostScript or display font name (e.g. \"InterTight-Bold\")"),
+      fontSize: z.number().positive().optional().describe("Font size in points"),
+      textColor: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("Text color as [r, g, b] (0–255 each)"),
+      position: z.array(z.number().int()).length(2).optional().describe("[x, y] position in pixels from top-left"),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+    },
+    async ({ documentName, kind, name, imagePath, textContent, font, fontSize, textColor, position, width, height }) => {
+      try {
+        const result = await makeLayer({
+          documentName, kind, name, imagePath, textContent, font, fontSize,
+          textColor: textColor as [number, number, number] | undefined,
+          position: position as [number, number] | undefined,
+          width, height,
+        });
+        return ok(result);
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_set_layer_properties",
+    "Change visibility, opacity, blend mode, position, or size of a named layer in an open Pixelmator document. All properties are optional — only supplied values are changed.",
+    {
+      documentName: z.string(),
+      layerName: z.string().describe("Exact name of the layer to modify"),
+      visible: z.boolean().optional(),
+      opacity: z.number().int().min(0).max(100).optional().describe("Layer opacity 0–100"),
+      blendMode: z.enum(BLEND_MODES).optional().describe("Compositing blend mode"),
+      position: z.array(z.number().int()).length(2).optional().describe("[x, y] in pixels from top-left"),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+    },
+    async ({ documentName, layerName, visible, opacity, blendMode, position, width, height }) => {
+      try {
+        await setLayerProperties({
+          documentName, layerName, visible, opacity, blendMode,
+          position: position as [number, number] | undefined,
+          width, height,
+        });
+        return ok({ updated: layerName });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_layer_order",
+    "Reorder a layer in the Pixelmator layer stack. action=front/back moves to the absolute top/bottom; action=before/after moves relative to another named layer.",
+    {
+      documentName: z.string(),
+      layerName: z.string().describe("Name of the layer to move"),
+      action: z.enum(["front", "back", "before", "after"]),
+      relativeTo: z.string().optional().describe("Target layer name — required for before/after"),
+    },
+    async ({ documentName, layerName, action, relativeTo }) => {
+      try {
+        await setLayerOrder({ documentName, layerName, action, relativeTo });
+        return ok({ reordered: layerName, action });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_group_layers",
+    "Move a list of named layers into a new group layer in an open Pixelmator document. Returns the group's name.",
+    {
+      documentName: z.string(),
+      layerNames: z.array(z.string()).min(1).describe("Names of layers to group"),
+      groupName: z.string().optional().describe("Name for the new group layer"),
+    },
+    async ({ documentName, layerNames, groupName }) => {
+      try {
+        return ok(await groupLayers({ documentName, layerNames, groupName }));
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_ungroup",
+    "Ungroup a group layer, moving its children back into the parent layer stack in an open Pixelmator document.",
+    {
+      documentName: z.string(),
+      layerName: z.string().describe("Name of the group layer to ungroup"),
+    },
+    async ({ documentName, layerName }) => {
+      try {
+        await ungroupLayer(documentName, layerName);
+        return ok({ ungrouped: layerName });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_set_layer_text",
+    "Edit text content and styling on a text layer in an open Pixelmator document. All style properties are optional — only supplied values are changed. Horizontal/vertical alignment are set at the layer level; font, size, and color apply to the full text content.",
+    {
+      documentName: z.string(),
+      layerName: z.string().describe("Name of the text layer to edit"),
+      textContent: z.string().optional().describe("Replace entire text content"),
+      font: z.string().optional().describe("PostScript or display font name"),
+      fontSize: z.number().positive().optional().describe("Font size in points"),
+      color: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("Text color as [r, g, b] (0–255)"),
+      horizontalAlignment: z.enum(["left", "center", "right", "justify"]).optional(),
+      verticalAlignment: z.enum(["top", "center", "bottom"]).optional(),
+    },
+    async ({ documentName, layerName, textContent, font, fontSize, color, horizontalAlignment, verticalAlignment }) => {
+      try {
+        await setLayerText({
+          documentName, layerName, textContent, font, fontSize,
+          color: color as [number, number, number] | undefined,
+          horizontalAlignment, verticalAlignment,
+        });
+        return ok({ updated: layerName });
+      } catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "pixelmator_make_shape",
+    "Create a filled shape layer (rectangle, rounded-rectangle, ellipse, or line) in an open Pixelmator document. Fill and stroke colors are 8-bit RGB [r, g, b]. Returns the shape layer name.",
+    {
+      documentName: z.string(),
+      shapeKind: z.enum(["rectangle", "rounded rectangle", "ellipse", "line"]),
+      name: z.string().optional().describe("Layer name"),
+      position: z.array(z.number().int()).length(2).optional().describe("[x, y] from top-left"),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+      cornerRadius: z.number().int().min(0).optional().describe("Corner radius in pixels — rounded rectangle only"),
+      fillColor: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("[r, g, b] fill color (0–255)"),
+      fillOpacity: z.number().int().min(0).max(100).optional().describe("Fill opacity 0–100"),
+      strokeColor: z.array(z.number().int().min(0).max(255)).length(3).optional().describe("[r, g, b] stroke color (0–255)"),
+      strokeWidth: z.number().positive().optional().describe("Stroke width in pixels"),
+      opacity: z.number().int().min(0).max(100).optional().describe("Layer opacity 0–100"),
+    },
+    async ({ documentName, shapeKind, name, position, width, height, cornerRadius,
+             fillColor, fillOpacity, strokeColor, strokeWidth, opacity }) => {
+      try {
+        return ok(await makeShape({
+          documentName, shapeKind, name,
+          position: position as [number, number] | undefined,
+          width, height, cornerRadius,
+          fillColor: fillColor as [number, number, number] | undefined,
+          fillOpacity,
+          strokeColor: strokeColor as [number, number, number] | undefined,
+          strokeWidth, opacity,
+        }));
+      } catch (e) { return err(e); }
     },
   );
 
