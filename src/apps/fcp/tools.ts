@@ -15,6 +15,12 @@ import {
 import { openFcp, activateFcp, isFcpRunning } from "./app.js";
 import { runApp } from "../../runners/runApp.js";
 import { buildEffectsCatalog, findEffect } from "./effects.js";
+import {
+  validateCompoundSafety,
+  lintCaptions,
+  checkAnchorSafety,
+  runSafetyPreflights,
+} from "./safety.js";
 import { CreatorStudioError } from "../../errors.js";
 
 function ok<T>(value: T) {
@@ -122,14 +128,26 @@ export function registerFcpTools(server: McpServer) {
 
   server.tool(
     "fcp_fcpxml_build",
-    "Build an FCPXML 1.14 document (1.13 also supported) from a JSON project spec. Returns the XML string without writing it.",
+    "Build an FCPXML 1.14 document (1.13 also supported) from a JSON project spec. Runs safety pre-flights (compound-clip overlap, caption roles, anchor collisions) unless skipPreflight=true. Returns the XML string without writing it.",
     {
       spec: z.unknown().describe("ProjectSpec — see schema in repo docs"),
+      allowUnsafe: z
+        .boolean()
+        .optional()
+        .describe("Suppress safety pre-flight errors (violations still reported in output)"),
+      skipPreflight: z
+        .boolean()
+        .optional()
+        .describe("Skip safety pre-flights entirely (fastest path)"),
     },
-    async ({ spec }) => {
+    async ({ spec, allowUnsafe, skipPreflight }) => {
       try {
-        const result = buildProjectFcpxml(spec);
-        return ok({ xml: result.xml, fcpxmlVersion: "1.13" });
+        const result = buildProjectFcpxml(spec, { allowUnsafe, skipPreflight });
+        return ok({
+          xml: result.xml,
+          fcpxmlVersion: result.spec.fcpxmlVersion,
+          preflight: result.preflight,
+        });
       } catch (e) {
         return err(e);
       }
@@ -200,12 +218,13 @@ export function registerFcpTools(server: McpServer) {
       spec: z.unknown(),
       filename: z.string().default("timeline.fcpxml"),
       skipValidate: z.boolean().default(false),
+      allowUnsafe: z.boolean().optional().describe("Suppress safety pre-flight errors"),
     },
-    async ({ project, spec, filename, skipValidate }) => {
+    async ({ project, spec, filename, skipValidate, allowUnsafe }) => {
       try {
         const cfg = loadConfig();
         const proj = await resolveProject(project);
-        const built = buildProjectFcpxml(spec);
+        const built = buildProjectFcpxml(spec, { allowUnsafe });
 
         let validation: { valid: boolean; output: string } | null = null;
         if (!skipValidate) {
@@ -282,6 +301,51 @@ export function registerFcpTools(server: McpServer) {
     async ({ library, event, project }) => {
       try {
         return ok(await readProjectMetadata(library, event, project));
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_safety_compound",
+    "Check a ProjectSpec for primary-spine clip overlaps that would cause FCP to insert implicit compound clips. Returns safe=true/false and a list of violations.",
+    { spec: z.unknown().describe("ProjectSpec JSON") },
+    async ({ spec }) => {
+      try {
+        const parsed = (await import("../../fcpxml/types.js")).ProjectSpecSchema.safeParse(spec);
+        if (!parsed.success) throw new CreatorStudioError("E_FCPXML_INVALID", parsed.error.message);
+        return ok(validateCompoundSafety(parsed.data));
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_safety_captions",
+    "Lint caption and subtitle role assignments in a ProjectSpec. Flags roles missing the required 'Role.Subrole' format that FCP would silently discard.",
+    { spec: z.unknown().describe("ProjectSpec JSON") },
+    async ({ spec }) => {
+      try {
+        const parsed = (await import("../../fcpxml/types.js")).ProjectSpecSchema.safeParse(spec);
+        if (!parsed.success) throw new CreatorStudioError("E_FCPXML_INVALID", parsed.error.message);
+        return ok(lintCaptions(parsed.data));
+      } catch (e) {
+        return err(e);
+      }
+    },
+  );
+
+  server.tool(
+    "fcp_safety_anchors",
+    "Detect title (connected-clip) anchor collisions in a ProjectSpec — two titles on the same lane with overlapping time ranges. FCP resolves these non-deterministically across versions.",
+    { spec: z.unknown().describe("ProjectSpec JSON") },
+    async ({ spec }) => {
+      try {
+        const parsed = (await import("../../fcpxml/types.js")).ProjectSpecSchema.safeParse(spec);
+        if (!parsed.success) throw new CreatorStudioError("E_FCPXML_INVALID", parsed.error.message);
+        return ok(checkAnchorSafety(parsed.data));
       } catch (e) {
         return err(e);
       }

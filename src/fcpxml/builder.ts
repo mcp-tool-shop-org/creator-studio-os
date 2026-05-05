@@ -7,6 +7,7 @@ import {
   type TransitionSpec,
 } from "./types.js";
 import { frameDurationAttr, secondsToTime } from "./time.js";
+import { runSafetyPreflights } from "../apps/fcp/safety.js";
 
 function escapeXmlAttr(s: string): string {
   return s
@@ -34,9 +35,13 @@ function srcToFileUrl(src: string): string {
 export interface BuildResult {
   xml: string;
   spec: ProjectSpec;
+  preflight?: ReturnType<typeof runSafetyPreflights>;
 }
 
-export function buildProjectFcpxml(input: unknown): BuildResult {
+export function buildProjectFcpxml(
+  input: unknown,
+  opts?: { allowUnsafe?: boolean; skipPreflight?: boolean },
+): BuildResult {
   const parsed = ProjectSpecSchema.safeParse(input);
   if (!parsed.success) {
     throw new CreatorStudioError(
@@ -46,6 +51,11 @@ export function buildProjectFcpxml(input: unknown): BuildResult {
     );
   }
   const spec = parsed.data;
+
+  const preflight = opts?.skipPreflight
+    ? undefined
+    : runSafetyPreflights(spec, { allowUnsafe: opts?.allowUnsafe });
+
   const rate = spec.format.frameRate;
 
   const titles = spec.spine.filter(
@@ -241,5 +251,5 @@ ${spineXml}
 </fcpxml>
 `;
 
-  return { xml, spec };
+  return { xml, spec, preflight };
 }
