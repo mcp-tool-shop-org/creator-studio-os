@@ -48,7 +48,7 @@
     "@creator-studio-os/core": "2.0.1",
     "@creator-studio-os/fcp": "2.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.25.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
