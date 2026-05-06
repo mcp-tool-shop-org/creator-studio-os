@@ -274,13 +274,13 @@ tell application id "${cfg.pixelmatorBundleId}"
   tell newDoc
     set bgLayer to make new rectangle shape layer at beginning of layers with properties {name:"bg", position:{0, 0}, width:${width}, height:${height}}
     set fill color of styles of bgLayer to {${hexToRgb16(sceneHex)}}
-    set titleLayer to make new text layer at beginning of layers with properties {name:"title", text content:"${escapeAs(scene.title)}"}
+    set titleLayer to make new text layer at beginning of layers with properties {name:"title", text content:"Creator Studio OS"}
     tell text content of titleLayer
-      set its size to 96
+      set its size to 108
       set its color to {${hexToRgb16(fgHex)}}
     end tell
     set horizontal alignment of titleLayer to center
-    set position of titleLayer to {${Math.round(width / 2)}, ${Math.round(height / 2)}}
+    set position of titleLayer to {${Math.round(width / 2 - 400)}, ${Math.round(height * 0.35)}}
     export to (POSIX file "${cardPath}") as PNG
   end tell
   close newDoc saving no
