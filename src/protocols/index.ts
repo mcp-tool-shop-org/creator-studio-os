@@ -20,8 +20,8 @@ import { appendLedger } from "../ledger/index.js";
 import { CreatorStudioError } from "../errors.js";
 import type { ProtocolDef, ProtocolStep, RunProtocolOpts, ReplayManifest } from "./types.js";
 import { brandDeckMinimal } from "./brand-deck-minimal.js";
-// steam-trailer-minimal.ts kept for backward compat with v1.7.0 tests;
-// protocol registry entry renamed to brand-deck-minimal (honest scope).
+// steam-trailer-minimal kept as a registry alias for backward compat (v1.7.7+).
+// The 13-step implementation lives in brand-deck-minimal.
 import { steamTrailerMinimal } from "./steam-trailer-minimal.js";
 
 // ---------------------------------------------------------------------------
@@ -29,10 +29,9 @@ import { steamTrailerMinimal } from "./steam-trailer-minimal.js";
 // ---------------------------------------------------------------------------
 
 const REGISTRY: Record<string, ProtocolDef> = {
-  // brand-deck-minimal: ffmpeg title-card slideshow → Compressor (honest scope)
+  // brand-deck-minimal: 13-step pipeline with optional per-scene Motion render
   "brand-deck-minimal": brandDeckMinimal,
-  // steam-trailer-minimal: legacy alias kept until v1.7.3 replaces it with the
-  // real Motion-render path. Points to the same implementation for now.
+  // steam-trailer-minimal: alias for brand-deck-minimal (v1.7.7+)
   "steam-trailer-minimal": steamTrailerMinimal,
 };
 
@@ -159,6 +158,7 @@ export async function* runProtocol(
     dryRun,
     resumeManifest,
     projectOutDir,
+    protocolName: proto.name,
   };
 
   for await (const step of proto.run(project, runOpts)) {

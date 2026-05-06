@@ -248,7 +248,7 @@ function validateStyleReferences(
 }
 
 // ---------------------------------------------------------------------------
-// Public API
+// Public API — editText (glyph-inside-text layout)
 // ---------------------------------------------------------------------------
 
 export async function editText(
@@ -361,5 +361,150 @@ export async function editText(
     newText,
     glyphCount: glyphs.length,
     styleRunCount: plannedStyleRuns.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public API — patchSiblingText (sibling-object layout)
+// ---------------------------------------------------------------------------
+
+/**
+ * Patch a .motn file that uses the Apple Compositions sibling-object layout.
+ *
+ * In this layout (used by all Apple Compositions templates) the <object> glyph
+ * elements are siblings of <text>, not children:
+ *
+ *   <styleRun style="N" offset="0" length="L"/>
+ *   <text>OLD TEXT</text>
+ *   <object value="CP1"><parameter name="Kerning" id="1" flags="16" value="0"/></object>
+ *   ...
+ *
+ * editText cannot handle this layout because it requires <object> elements
+ * inside <text>. Use patchSiblingText when editText throws E_OZML_PARAM_NOT_FOUND.
+ *
+ * Matching rules:
+ *   - styleRun must immediately precede <text> on the next line (any indent)
+ *   - Each sibling <object> must have exactly one <parameter> child on its own line
+ *   - Only the first styleRun before the block is updated (single-run assumption)
+ *
+ * Non-ASCII gate: same as editText — pass allowNonAscii:true to override.
+ */
+export async function patchSiblingText(
+  path: string,
+  newText: string,
+  opts: EditTextOpts = {},
+): Promise<EditTextResult> {
+  try {
+    await access(path);
+  } catch {
+    throw new CreatorStudioError(
+      "E_OZML_FILE_MISSING",
+      `Motion template not found: ${path}`,
+      "Ensure the path points to a valid .motn or .moti file.",
+    );
+  }
+
+  const xml = await readFile(path, "utf-8");
+  if (!xml.includes("<ozml")) {
+    throw new CreatorStudioError("E_OZML_INVALID", `Not an OZML file: ${path}`);
+  }
+
+  const textNodeIndex = opts.textNodeIndex ?? 0;
+  const allowNonAscii = opts.allowNonAscii ?? false;
+  const outputPath = opts.outputPath ?? path;
+
+  const glyphs = [...newText];
+
+  if (!allowNonAscii && glyphs.some((g) => (g.codePointAt(0) ?? 0) > 127)) {
+    throw new CreatorStudioError(
+      "E_NON_ASCII",
+      "Text contains non-ASCII characters — codepoint encoding for non-ASCII is empirically unverified in OZML.",
+      "Pass allowNonAscii=true to override.",
+    );
+  }
+
+  // Matches one sibling-layout text block (styleRun → <text> → <object>+ sequence).
+  // Groups:
+  //   1: styleRun prefix up to and including `length="`
+  //   2: old length value
+  //   3: styleRun suffix from closing `"` through `/>` and the trailing newline
+  //   4: horizontal indent before <text> (tabs/spaces; same as before <object>)
+  //   5: old text content (no `<` chars)
+  //   6: entire old sibling object block
+  const SIBLING_BLOCK_RE = /(<styleRun\b[^>]*\blength=")(\d+)("[^>]*\/>\n)([ \t]*)<text>([^<]*)<\/text>\n((?:[ \t]*<object[^>]*>\n[ \t]*<parameter[^>]*\/>\n[ \t]*<\/object>\n)+)/g;
+
+  let found = false;
+  let oldText = "";
+  const matchCount = { n: 0 };
+
+  const newXml = xml.replace(
+    SIBLING_BLOCK_RE,
+    (
+      _full: string,
+      styleRunPrefix: string,
+      _oldLen: string,
+      styleRunSuffix: string,
+      indent: string,
+      oldCdata: string,
+      _oldObjects: string,
+    ): string => {
+      if (matchCount.n !== textNodeIndex) {
+        matchCount.n++;
+        return _full;
+      }
+      matchCount.n++;
+      found = true;
+      oldText = oldCdata;
+
+      const innerIndent = indent + "\t";
+      const objectLines = glyphs
+        .map(
+          (glyph, i) =>
+            `${indent}<object value="${glyph.codePointAt(0)!}">\n` +
+            `${innerIndent}<parameter name="Kerning" id="${i + 1}" flags="16" value="0"/>\n` +
+            `${indent}</object>\n`,
+        )
+        .join("");
+
+      return (
+        `${styleRunPrefix}${glyphs.length}${styleRunSuffix}` +
+        `${indent}<text>${newText}</text>\n` +
+        objectLines
+      );
+    },
+  );
+
+  if (!found) {
+    throw new CreatorStudioError(
+      "E_OZML_PARAM_NOT_FOUND",
+      `No sibling-layout <text> block at index ${textNodeIndex} in ${path}`,
+      "Use motion_template_inspect to verify template structure. " +
+        "Sibling layout: <styleRun/> then <text> then <object> siblings at same level.",
+    );
+  }
+
+  if (outputPath !== path) {
+    await mkdir(dirname(outputPath), { recursive: true });
+  }
+  const tmpPath = `${outputPath}.csos-tmp-${Date.now()}`;
+  try {
+    await writeFile(tmpPath, newXml, "utf-8");
+    await rename(tmpPath, outputPath);
+  } catch (e) {
+    try {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(tmpPath);
+    } catch { /* ignore */ }
+    throw e;
+  }
+
+  return {
+    inputPath: path,
+    outputPath,
+    textNodeIndex,
+    oldText,
+    newText,
+    glyphCount: glyphs.length,
+    styleRunCount: 1,
   };
 }

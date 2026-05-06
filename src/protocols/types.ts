@@ -68,6 +68,12 @@ export interface RunProtocolOpts {
    * Protocol steps write: out/.csos/, out/fcp/, out/<deliverables>
    */
   projectOutDir: string;
+  /**
+   * Registry name for this protocol invocation — written to the replay manifest.
+   * Defaults to the protocol's own name; set by the orchestrator so aliases
+   * (e.g. steam-trailer-minimal → brand-deck-minimal) record the caller's name.
+   */
+  protocolName?: string;
 }
 
 // ---------------------------------------------------------------------------

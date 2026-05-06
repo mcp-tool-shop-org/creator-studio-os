@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { editText } from "../src/apps/motion/textEdit.js";
+import { editText, patchSiblingText } from "../src/apps/motion/textEdit.js";
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -391,5 +391,225 @@ ${objs}
     expect(out).toMatch(/styleRun style="101" offset="0" length="5"/);
     // Last run: style="102", offset=5, stretched to 12 (17-5=12)
     expect(out).toMatch(/styleRun style="102" offset="5" length="12"/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// patchSiblingText — Apple Compositions sibling-object layout
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a minimal OZML fixture using the sibling-object layout found in all
+ * Apple Compositions templates (Atmospheric-Lower Third, etc.).
+ *
+ * Structure (4-space indent):
+ *   <styleRun style="N" offset="0" length="L"/>
+ *   <text>TEXT</text>
+ *   <object value="CP">
+ *       <parameter name="Kerning" id="K" flags="16" value="0"/>
+ *   </object> × L
+ */
+const makeSiblingOzml = (text: string, styleId = "100", indent = "    ") => {
+  const glyphs = [...text];
+  const innerIndent = indent + "    ";
+  const objectLines = glyphs
+    .map(
+      (g, i) =>
+        `${indent}<object value="${g.codePointAt(0)}">\n` +
+        `${innerIndent}<parameter name="Kerning" id="${i + 1}" flags="16" value="0"/>\n` +
+        `${indent}</object>`,
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ozxmlscene>
+<ozml version="4.0">
+<style id="${styleId}" factoryID="1">
+  <font type="0">Helvetica</font>
+</style>
+<scenenode name="Title" id="200" factoryID="16">
+${indent}<styleRun style="${styleId}" offset="0" length="${glyphs.length}"/>
+${indent}<text>${text}</text>
+${objectLines}
+</scenenode>
+</ozml>`;
+};
+
+/** Two sibling blocks for textNodeIndex tests. */
+const makeTwoBlockSiblingOzml = () => {
+  const block = (text: string, styleId: string, indent: string) => {
+    const g = [...text];
+    const inner = indent + "    ";
+    const objs = g
+      .map(
+        (c, i) =>
+          `${indent}<object value="${c.codePointAt(0)}">\n` +
+          `${inner}<parameter name="Kerning" id="${i + 1}" flags="16" value="0"/>\n` +
+          `${indent}</object>`,
+      )
+      .join("\n");
+    return (
+      `${indent}<styleRun style="${styleId}" offset="0" length="${g.length}"/>\n` +
+      `${indent}<text>${text}</text>\n` +
+      objs
+    );
+  };
+  const ind = "    ";
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ozml version="4.0">
+<style id="101" factoryID="1"><font type="0">Helvetica</font></style>
+<style id="102" factoryID="1"><font type="0">Arial</font></style>
+<scenenode id="301" factoryID="16">
+${block("Headline", "101", ind)}
+</scenenode>
+<scenenode id="302" factoryID="16">
+${block("Subhead", "102", ind)}
+</scenenode>
+</ozml>`;
+};
+
+let siblingTmp: string;
+let siblingPath: string;
+
+beforeEach(async () => {
+  siblingTmp = await mkdtemp(join(tmpdir(), "csos-sibling-"));
+  siblingPath = join(siblingTmp, "sibling.motn");
+  await writeFile(siblingPath, makeSiblingOzml("Name Here"), "utf-8");
+});
+
+afterEach(async () => {
+  await rm(siblingTmp, { recursive: true, force: true });
+});
+
+describe("patchSiblingText — basic replacement", () => {
+  it("replaces text, updates styleRun length, rebuilds sibling objects", async () => {
+    const result = await patchSiblingText(siblingPath, "Creator Studio");
+    expect(result.oldText).toBe("Name Here");
+    expect(result.newText).toBe("Creator Studio");
+    expect(result.glyphCount).toBe(14);
+    expect(result.styleRunCount).toBe(1);
+
+    const out = await readFile(siblingPath, "utf-8");
+    expect(out).toContain('<text>Creator Studio</text>');
+    expect(out).toContain('length="14"');
+    // Old length gone
+    expect(out).not.toContain('length="9"');
+    // 14 sibling objects
+    const objectCount = (out.match(/<object\s/g) ?? []).length;
+    expect(objectCount).toBe(14);
+    // First codepoint: C = 67
+    expect(out).toContain('<object value="67">');
+  });
+
+  it("handles shorter replacement", async () => {
+    const result = await patchSiblingText(siblingPath, "Hi");
+    expect(result.glyphCount).toBe(2);
+    const out = await readFile(siblingPath, "utf-8");
+    expect(out).toContain('length="2"');
+    const objectCount = (out.match(/<object\s/g) ?? []).length;
+    expect(objectCount).toBe(2);
+  });
+
+  it("produces dense 1-based kerning IDs", async () => {
+    await patchSiblingText(siblingPath, "ABC");
+    const out = await readFile(siblingPath, "utf-8");
+    const ids: number[] = [];
+    const re = /<parameter name="Kerning" id="(\d+)"/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(out)) !== null) ids.push(parseInt(m[1], 10));
+    expect(ids).toEqual([1, 2, 3]);
+  });
+
+  it("preserves style attribute on styleRun", async () => {
+    await patchSiblingText(siblingPath, "Test");
+    const out = await readFile(siblingPath, "utf-8");
+    expect(out).toContain('style="100"');
+  });
+
+  it("reports oldText correctly", async () => {
+    const result = await patchSiblingText(siblingPath, "anything");
+    expect(result.oldText).toBe("Name Here");
+  });
+});
+
+describe("patchSiblingText — textNodeIndex", () => {
+  it("selects first block by default", async () => {
+    const twoPath = join(siblingTmp, "two.motn");
+    await writeFile(twoPath, makeTwoBlockSiblingOzml(), "utf-8");
+
+    const result = await patchSiblingText(twoPath, "New Headline");
+    expect(result.oldText).toBe("Headline");
+
+    const out = await readFile(twoPath, "utf-8");
+    expect(out).toContain("<text>New Headline</text>");
+    expect(out).toContain("<text>Subhead</text>"); // second block unchanged
+  });
+
+  it("selects second block with textNodeIndex=1", async () => {
+    const twoPath = join(siblingTmp, "two.motn");
+    await writeFile(twoPath, makeTwoBlockSiblingOzml(), "utf-8");
+
+    const result = await patchSiblingText(twoPath, "New Subhead", { textNodeIndex: 1 });
+    expect(result.oldText).toBe("Subhead");
+
+    const out = await readFile(twoPath, "utf-8");
+    expect(out).toContain("<text>Headline</text>"); // first block unchanged
+    expect(out).toContain("<text>New Subhead</text>");
+  });
+
+  it("throws E_OZML_PARAM_NOT_FOUND for out-of-range index", async () => {
+    await expect(
+      patchSiblingText(siblingPath, "X", { textNodeIndex: 5 }),
+    ).rejects.toMatchObject({ code: "E_OZML_PARAM_NOT_FOUND" });
+  });
+});
+
+describe("patchSiblingText — outputPath", () => {
+  it("writes to outputPath, leaves source unchanged", async () => {
+    const outPath = join(siblingTmp, "out", "modified.motn");
+    await patchSiblingText(siblingPath, "New Text", { outputPath: outPath });
+
+    const src = await readFile(siblingPath, "utf-8");
+    expect(src).toContain("Name Here");
+
+    const out = await readFile(outPath, "utf-8");
+    expect(out).toContain("New Text");
+    expect(out).not.toContain("Name Here");
+  });
+});
+
+describe("patchSiblingText — error handling", () => {
+  it("throws E_OZML_FILE_MISSING for non-existent file", async () => {
+    await expect(
+      patchSiblingText(join(siblingTmp, "no-such.motn"), "X"),
+    ).rejects.toMatchObject({ code: "E_OZML_FILE_MISSING" });
+  });
+
+  it("throws E_OZML_INVALID for non-OZML file", async () => {
+    const bad = join(siblingTmp, "bad.motn");
+    await writeFile(bad, "<root>not ozml</root>", "utf-8");
+    await expect(patchSiblingText(bad, "X")).rejects.toMatchObject({
+      code: "E_OZML_INVALID",
+    });
+  });
+
+  it("throws E_OZML_PARAM_NOT_FOUND when file has no sibling blocks", async () => {
+    // A file with glyph-inside-text layout (no sibling objects) should fail
+    const inside = join(siblingTmp, "inside.motn");
+    await writeFile(inside, makeSampleOzml("Hello"), "utf-8");
+    await expect(patchSiblingText(inside, "World")).rejects.toMatchObject({
+      code: "E_OZML_PARAM_NOT_FOUND",
+    });
+  });
+
+  it("throws E_NON_ASCII without allowNonAscii flag", async () => {
+    await expect(patchSiblingText(siblingPath, "Héllo")).rejects.toMatchObject({
+      code: "E_NON_ASCII",
+    });
+  });
+
+  it("succeeds with allowNonAscii=true", async () => {
+    const result = await patchSiblingText(siblingPath, "Héllo", { allowNonAscii: true });
+    expect(result.glyphCount).toBe(5);
   });
 });

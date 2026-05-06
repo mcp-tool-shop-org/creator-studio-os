@@ -1,13 +1,11 @@
 /**
  * Protocol: brand-deck-minimal
  *
- * 12-step pipeline that builds a titled brand-card deck and ProRes slideshow
- * from a ProjectV2 project.json. Each scene gets a solid-color title card
- * (primary color background, secondary color text, ffmpeg drawtext). Compressor
- * encodes the concat to the primary deliverable codec.
- *
- * For a full Motion-rendered trailer with per-scene .motn templates, use
- * steam-trailer-minimal (v1.7.3+).
+ * 13-step pipeline that builds a titled brand-card deck and ProRes slideshow
+ * from a ProjectV2 project.json. Each scene gets a Pixelmator-rendered title
+ * card (hue-shifted background, scene title text). When motionTemplatePath is
+ * set, step 3 renders per-scene Motion lower-third clips via Compressor and
+ * uses them as the final source (brand cards become the fallback).
  *
  * Dry-run mode mocks all external calls (AppleScript, Compressor, FCP) while
  * still exercising the full harness including FCPXML building and file I/O.
@@ -15,16 +13,17 @@
  * Steps:
  *  1  validate-project        — assert ProjectV2 schema + scene count
  *  2  compose-brand-cards     — Pixelmator brand card PNGs per scene
- *  3  edit-motion-title       — set Motion template title text
- *  4  resolve-fcp-params      — compute timeline geometry
- *  5  build-fcpxml            — write .fcpxml to out/fcp/
- *  6  safety-preflight        — assert brand card files exist
- *  7  dtd-validate            — xmllint against bundled FCP DTD
- *  8  fcp-import              — open .fcpxml in Final Cut Pro
- *  9  compressor-encode       — submit encode job to Compressor
- * 10  monitor-encode          — poll encode until done
- * 11  verify-output           — assert MOV/MP4 exists and has bytes
- * 12  write-replay-manifest   — finalise manifest with completedAt
+ *  3  render-scene-clips      — per-scene Motion lower-third render via Compressor
+ *  4  edit-motion-title       — set project-level Motion template title (single clip)
+ *  5  resolve-fcp-params      — compute timeline geometry
+ *  6  build-fcpxml            — write .fcpxml to out/fcp/
+ *  7  safety-preflight        — assert brand card files exist
+ *  8  dtd-validate            — xmllint against bundled FCP DTD
+ *  9  fcp-import              — open .fcpxml in Final Cut Pro
+ * 10  compressor-encode       — submit encode job to Compressor
+ * 11  monitor-encode          — poll encode until done
+ * 12  verify-output           — assert MOV/MP4 exists and has bytes
+ * 13  write-replay-manifest   — finalise manifest with completedAt
  */
 import { mkdir, writeFile, readFile, access, stat } from "node:fs/promises";
 import { join, dirname, basename } from "node:path";
@@ -44,6 +43,7 @@ import type { ProtocolDef, ProtocolStep, RunProtocolOpts, ReplayManifest } from 
 export const STEP_NAMES = [
   "validate-project",
   "compose-brand-cards",
+  "render-scene-clips",
   "edit-motion-title",
   "resolve-fcp-params",
   "build-fcpxml",
@@ -128,9 +128,6 @@ function parseResolution(res: string): { width: number; height: number } {
  * Resolve the best bundled Compressor preset for a given codec + resolution.
  * Prefers user preset in <dataDir>/shared/presets/ if present, then falls
  * back to a bundled .setting file shipped with Compressor.
- *
- * Bundled ProRes presets use the .setting extension; HEVC presets use
- * .compressorsetting. Both are accepted by the Compressor CLI -settingpath flag.
  */
 function resolveBundledPreset(settingsDir: string, codec: string, resolution: string): string {
   const c = codec.toLowerCase().replace(/\s+/g, "");
@@ -142,7 +139,7 @@ function resolveBundledPreset(settingsDir: string, codec: string, resolution: st
     return join(settingsDir, "ProRes 422 SD.setting");
   }
   if (c.includes("prores4444")) {
-    return join(settingsDir, "ProRes 422 1080.setting"); // closest bundled match
+    return join(settingsDir, "ProRes 422 1080.setting");
   }
   if (c.includes("hevc") || c.includes("h.265") || c.includes("h265")) {
     return join(settingsDir, "EFBComputer_HEVC8.compressorsetting");
@@ -150,7 +147,6 @@ function resolveBundledPreset(settingsDir: string, codec: string, resolution: st
   if (c.includes("h.264") || c.includes("h264") || c.includes("avc")) {
     return join(settingsDir, "hd264DiscName.setting");
   }
-  // Default fallback
   return join(settingsDir, "EFBComputer_HEVC8.compressorsetting");
 }
 
@@ -164,7 +160,7 @@ async function* run(
 ): AsyncGenerator<ProtocolStep> {
   const { taskId, dryRun, resumeManifest, projectOutDir } = opts;
   const idempotencyKey = sha256(
-    "steam-trailer-minimal|" + JSON.stringify({
+    "brand-deck-minimal|" + JSON.stringify({
       slug: project.slug,
       sceneIds: project.scenes.map((s) => s.id),
       deliverables: project.deliverables,
@@ -181,17 +177,11 @@ async function* run(
   const brandOutDir = join(projectOutDir, "brand");
   const replayPath = join(csosDir, `replay-${taskId}.json`);
 
-  if (!dryRun) {
-    await mkdir(fcpOutDir, { recursive: true });
-    await mkdir(csosDir, { recursive: true });
-    await mkdir(brandOutDir, { recursive: true });
-  } else {
-    await mkdir(fcpOutDir, { recursive: true });
-    await mkdir(csosDir, { recursive: true });
-    await mkdir(brandOutDir, { recursive: true });
-  }
+  await mkdir(fcpOutDir, { recursive: true });
+  await mkdir(csosDir, { recursive: true });
+  await mkdir(brandOutDir, { recursive: true });
 
-  // In-memory manifest (written in step 12)
+  // In-memory manifest (written in step 13)
   const completedSteps: ReplayManifest["steps"] = [];
 
   function recordStep(
@@ -223,7 +213,6 @@ async function* run(
       yield makeStep(stepName, "skipped", "resumed from manifest", 0);
     } else {
       const t = Date.now();
-      // Schema already parsed by orchestrator; double-check scene count
       const sceneCount = project.scenes.length;
       const deliverableCount = Object.keys(project.deliverables).length;
       const durationMs = Date.now() - t;
@@ -246,7 +235,6 @@ async function* run(
       const created: string[] = [];
 
       if (dryRun) {
-        // Write stub PNG files (1 byte) so downstream steps can assert existence
         for (const scene of project.scenes) {
           const cardPath = join(brandOutDir, `${scene.id}.png`);
           await writeFile(cardPath, Buffer.alloc(1));
@@ -270,7 +258,6 @@ async function* run(
         for (let i = 0; i < project.scenes.length; i++) {
           const scene = project.scenes[i]!;
           const cardPath = join(brandOutDir, `${scene.id}.png`);
-          // Rotate hue 25° per scene → visually distinct frames across the deck
           const hue = (baseH + i * 25) % 360;
           const sceneHex = hslToHex(hue, Math.max(baseS, 0.3), Math.max(baseL, 0.15));
           // Pitfall: background shape class is "rectangle shape layer", NOT "rectangle".
@@ -345,7 +332,98 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 3: edit-motion-title
+  // Step 3: render-scene-clips
+  //
+  // Per-scene Motion lower-third render: clone .motn → set scene title via
+  // OZML editText → headless Compressor render → waitFor per scene.
+  // Produces one .mov per scene under out/.csos/scene-clips/.
+  //
+  // When motionTemplatePath is empty: skips gracefully. compressor-encode
+  // falls back to the Pixelmator PNG slideshow path.
+  //
+  // Bundled Apple templates must never be mutated directly — cloneTemplate
+  // copies them before any edit, so the original is always preserved.
+  // -------------------------------------------------------------------------
+
+  // Populated by this step; consumed by compressor-encode.
+  const sceneClipPaths: string[] = [];
+  const sceneClipsDir = join(csosDir, "scene-clips");
+  const sceneMotnsDir = join(csosDir, "scene-motns");
+
+  {
+    const stepName = "render-scene-clips";
+    const iHash = inputHash(stepName);
+    if (isResumed(stepName, iHash, resumeManifest)) {
+      yield makeStep(stepName, "skipped", "resumed from manifest", 0);
+    } else {
+      const t = Date.now();
+
+      if (dryRun) {
+        await mkdir(sceneClipsDir, { recursive: true });
+        for (const scene of project.scenes) {
+          const clipPath = join(sceneClipsDir, `${scene.id}.mov`);
+          await writeFile(clipPath, Buffer.alloc(1));
+          sceneClipPaths.push(clipPath);
+        }
+        const detail = `dry-run: wrote ${sceneClipPaths.length} stub clip(s) to .csos/scene-clips/`;
+        recordStep(stepName, iHash, "completed", detail, Date.now() - t);
+        yield makeStep(stepName, "completed", detail, Date.now() - t);
+      } else if (!project.motionTemplatePath) {
+        const detail = "skipped — no motionTemplatePath in project; compressor-encode will use Pixelmator PNG slideshow";
+        recordStep(stepName, iHash, "completed", detail, Date.now() - t);
+        yield makeStep(stepName, "completed", detail, Date.now() - t);
+      } else {
+        await mkdir(sceneClipsDir, { recursive: true });
+        await mkdir(sceneMotnsDir, { recursive: true });
+        const { cloneTemplate } = await import("../apps/motion/ozml.js");
+        const { editText, patchSiblingText } = await import("../apps/motion/textEdit.js");
+        const { renderViaCompressor } = await import("../apps/motion/render.js");
+        const { waitFor } = await import("../apps/compressor/monitor.js");
+        const cfg = loadConfig();
+        const primaryKey = Object.keys(project.deliverables)[0] ?? "main";
+        const deliverable = project.deliverables[primaryKey]!;
+        const settingPath = resolveBundledPreset(
+          cfg.compressorBundledSettingsDir,
+          deliverable.codec,
+          deliverable.resolution,
+        );
+        const rendered: string[] = [];
+        for (const scene of project.scenes) {
+          const clonedMotnPath = join(sceneMotnsDir, `${scene.id}.motn`);
+          const clipPath = join(sceneClipsDir, `${scene.id}.mov`);
+          await cloneTemplate(project.motionTemplatePath, clonedMotnPath);
+          // Apple Compositions templates use sibling-object layout (styleRun + <text>
+          // + sibling <object> elements). editText handles glyph-inside-text layout;
+          // fall back to patchSiblingText when editText finds no factory nodes.
+          try {
+            await editText(clonedMotnPath, scene.title);
+          } catch (err) {
+            if (err instanceof CreatorStudioError && err.code === "E_OZML_PARAM_NOT_FOUND") {
+              await patchSiblingText(clonedMotnPath, scene.title);
+            } else {
+              throw err;
+            }
+          }
+          const { jobId } = await renderViaCompressor({
+            motnPath: clonedMotnPath,
+            settingPath,
+            locationPath: clipPath,
+            batchName: `csos-${project.slug}-${scene.id}`,
+          });
+          await waitFor({ jobId, untilStatus: "completed", timeoutSec: 120 });
+          sceneClipPaths.push(clipPath);
+          rendered.push(scene.id);
+        }
+        const durationMs = Date.now() - t;
+        const detail = `rendered ${rendered.length} scene clip(s) via Motion+Compressor: ${rendered.join(", ")}`;
+        recordStep(stepName, iHash, "completed", detail, durationMs);
+        yield makeStep(stepName, "completed", detail, durationMs);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Step 4: edit-motion-title
   // -------------------------------------------------------------------------
   {
     const stepName = "edit-motion-title";
@@ -366,7 +444,6 @@ end tell`;
         yield makeStep(stepName, "completed", detail, Date.now() - t);
       } else {
         // Set the title text parameter in the .motn file directly (OZML edit)
-        // Delegate to the motion_template_edit_text AppleScript surface
         const script = `
 tell application id "com.apple.motionapp"
   open "${project.motionTemplatePath}"
@@ -391,7 +468,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 4: resolve-fcp-params
+  // Step 5: resolve-fcp-params
   // -------------------------------------------------------------------------
   interface FcpParams {
     totalDurationSeconds: number;
@@ -407,7 +484,6 @@ end tell`;
     const stepName = "resolve-fcp-params";
     const iHash = inputHash(stepName);
     if (isResumed(stepName, iHash, resumeManifest)) {
-      // Recompute params (deterministic from project)
       const primaryKey = Object.keys(project.deliverables)[0] ?? "main";
       const primary = project.deliverables[primaryKey]!;
       let offset = 0;
@@ -447,7 +523,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 5: build-fcpxml
+  // Step 6: build-fcpxml
   // -------------------------------------------------------------------------
   let fcpxmlPath!: string;
 
@@ -461,7 +537,6 @@ end tell`;
     } else {
       const t = Date.now();
 
-      // Build asset + spine entries for each scene
       const assets = fcpParams.scenes.map((sc, i) => ({
         id: `a${i + 1}`,
         name: sc.title,
@@ -505,7 +580,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 6: safety-preflight
+  // Step 7: safety-preflight
   // -------------------------------------------------------------------------
   {
     const stepName = "safety-preflight";
@@ -529,7 +604,7 @@ end tell`;
         const detail = `missing brand cards: ${missing.join(", ")}`;
         recordStep(stepName, iHash, "failed", detail, durationMs);
         yield makeStep(stepName, "failed", detail, durationMs);
-        return; // halt protocol
+        return;
       }
 
       const detail = `all ${fcpParams.scenes.length} brand card(s) present`;
@@ -539,7 +614,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 7: dtd-validate
+  // Step 8: dtd-validate
   // -------------------------------------------------------------------------
   {
     const stepName = "dtd-validate";
@@ -553,7 +628,6 @@ end tell`;
       if (dryRun) {
         detail = "dry-run: DTD validation skipped";
       } else {
-        // Validate against bundled FCP DTD via xmllint
         const { validateFcpxmlAgainstDtd } = await import("../fcpxml/validate.js");
         const cfg = loadConfig();
         const fcpxmlContent = await readFile(fcpxmlPath, "utf-8");
@@ -569,7 +643,6 @@ end tell`;
           }
         } catch (err) {
           detail = `DTD validation error: ${err instanceof Error ? err.message : String(err)}`;
-          // Non-fatal if xmllint is unavailable
         }
       }
 
@@ -580,7 +653,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 8: fcp-import
+  // Step 9: fcp-import
   // -------------------------------------------------------------------------
   {
     const stepName = "fcp-import";
@@ -597,7 +670,6 @@ end tell`;
         try {
           const { openWithApp } = await import("../runners/openApp.js");
           await openWithApp(fcpxmlPath, { appBundleId: "com.apple.FinalCutApp" });
-          // Wait for FCP to process the import
           await new Promise((r) => setTimeout(r, 3000));
           detail = `imported ${basename(fcpxmlPath)} into Final Cut Pro`;
         } catch (err) {
@@ -612,7 +684,13 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 9: compressor-encode
+  // Step 10: compressor-encode
+  //
+  // Source priority:
+  //   1. Per-scene Motion clips from render-scene-clips — concat demuxer with
+  //      -c copy (no transcode; Motion renders ProRes, stream through directly)
+  //   2. Pixelmator PNG slideshow — ffmpeg filter_complex concat → prores_ks
+  //   3. lavfi solid-color fill — last resort when Pixelmator is unavailable
   // -------------------------------------------------------------------------
   let encodeJobId: string | null = null;
   let outputMovPath!: string;
@@ -632,57 +710,65 @@ end tell`;
 
       if (dryRun) {
         encodeJobId = `dry-run-job-${taskId}`;
-        detail = `dry-run: would encode ${fcpxmlPath} → ${basename(outputMovPath)} (codec=${deliverable.codec})`;
+        detail = `dry-run: would encode → ${basename(outputMovPath)} (codec=${deliverable.codec})`;
       } else {
         try {
-          // v1.7.0: build a slideshow MOV from brand cards via ffmpeg, then hand
-          // off to Compressor. Compressor CLI requires a media file — FCPXML is not
-          // a valid jobPath. TODO v1.8: replace with FCP Share → Compressor path
-          // once an "export from FCP" step is wired into the protocol.
           const { execFile } = await import("node:child_process");
           const { promisify } = await import("node:util");
           const execFileAsync = promisify(execFile);
 
           const slideshowPath = join(projectOutDir, `${project.slug}-src.mov`);
           const { width, height } = fcpParams.resolution;
+          const ffArgs: string[] = ["-y", "-loglevel", "error"];
 
-          // Check whether brand cards are real images (>100 bytes) or stubs from
-          // a failed Pixelmator call. If stubs, fall back to a lavfi solid-color
-          // source so ffmpeg gets valid input regardless.
-          const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
-            .then((s) => s.size)
-            .catch(() => 0);
-          const cardsAreReal = firstCardSize > 100;
+          const firstClipSize = sceneClipPaths.length > 0
+            ? await stat(sceneClipPaths[0]!).then((s) => s.size).catch(() => 0)
+            : 0;
+          const clipsAreReal = firstClipSize > 100;
 
-          const ffArgs: string[] = ["-y", "-loglevel", "error"]; // suppress progress
-
-          if (cardsAreReal) {
-            for (const sc of fcpParams.scenes) {
-              ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
-            }
-            const filterParts = fcpParams.scenes.map(
-              (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
-            );
-            const concatFilter =
-              filterParts.join(";") +
-              ";" +
-              fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
-              `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
-            ffArgs.push("-filter_complex", concatFilter, "-map", "[out]");
-          } else {
-            // Brand cards are stubs — generate a solid-color fill from lavfi
-            const hex = project.brand.primaryColor.replace("#", "");
+          if (clipsAreReal && sceneClipPaths.length === fcpParams.scenes.length) {
+            // Path 1: concat per-scene Motion clips via concat demuxer (-c copy)
+            const concatListPath = join(csosDir, "scene-clips.txt");
+            const concatList = sceneClipPaths.map((p) => `file '${p}'`).join("\n");
+            await writeFile(concatListPath, concatList, "utf-8");
             ffArgs.push(
-              "-f", "lavfi",
-              "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
+              "-f", "concat", "-safe", "0", "-i", concatListPath,
+              "-c", "copy",
+              slideshowPath,
             );
+          } else {
+            const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
+              .then((s) => s.size)
+              .catch(() => 0);
+            const cardsAreReal = firstCardSize > 100;
+
+            if (cardsAreReal) {
+              // Path 2: PNG slideshow → ProRes transcode
+              for (const sc of fcpParams.scenes) {
+                ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
+              }
+              const filterParts = fcpParams.scenes.map(
+                (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
+              );
+              const concatFilter =
+                filterParts.join(";") +
+                ";" +
+                fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
+                `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
+              ffArgs.push("-filter_complex", concatFilter, "-map", "[out]");
+            } else {
+              // Path 3: lavfi fill
+              const hex = project.brand.primaryColor.replace("#", "");
+              ffArgs.push(
+                "-f", "lavfi",
+                "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
+              );
+            }
+            ffArgs.push("-c:v", "prores_ks", slideshowPath);
           }
 
-          ffArgs.push("-c:v", "prores_ks", slideshowPath);
           await execFileAsync("ffmpeg", ffArgs, { maxBuffer: 10 * 1024 * 1024 });
-          await execFileAsync("ffmpeg", ffArgs);
 
-          // Resolve bundled preset by codec + resolution
           const cfg = loadConfig();
           const settingPath = resolveBundledPreset(
             cfg.compressorBundledSettingsDir,
@@ -694,7 +780,7 @@ end tell`;
           const result = await encodeJob({
             jobPath: slideshowPath,
             settingPath,
-            locationPath: outputMovPath, // Compressor uses stem; replaces extension with codec's container
+            locationPath: outputMovPath,
           });
           encodeJobId = result.jobId ?? null;
           detail = `submitted encode job ${encodeJobId} → ${basename(outputMovPath)} (preset=${basename(settingPath)})`;
@@ -713,7 +799,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 10: monitor-encode
+  // Step 11: monitor-encode
   // -------------------------------------------------------------------------
   {
     const stepName = "monitor-encode";
@@ -729,7 +815,6 @@ end tell`;
       } else if (!encodeJobId) {
         detail = "no encode job to monitor (encode step may have been skipped)";
       } else {
-        // Poll encode status via waitFor
         const { waitFor } = await import("../apps/compressor/monitor.js");
         try {
           const frame = await waitFor({
@@ -753,7 +838,7 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 11: verify-output
+  // Step 12: verify-output
   // -------------------------------------------------------------------------
   {
     const stepName = "verify-output";
@@ -765,7 +850,6 @@ end tell`;
       let detail: string;
 
       if (dryRun) {
-        // Create placeholder output file
         await mkdir(dirname(outputMovPath), { recursive: true });
         await writeFile(outputMovPath, Buffer.alloc(1));
         detail = `dry-run: created placeholder ${basename(outputMovPath)}`;
@@ -794,16 +878,15 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 12: write-replay-manifest
+  // Step 13: write-replay-manifest
   // -------------------------------------------------------------------------
   {
     const stepName = "write-replay-manifest";
-    // This step is NEVER skipped on resume — its purpose is to finalise
     const t = Date.now();
 
     const manifest: ReplayManifest = {
       taskId,
-      protocolName: "steam-trailer-minimal",
+      protocolName: opts.protocolName ?? "brand-deck-minimal",
       projectSlug: project.slug,
       idempotencyKey,
       steps: completedSteps,
@@ -844,10 +927,11 @@ function hexToRgb16(hex: string): string {
 export const brandDeckMinimal: ProtocolDef = {
   name: "brand-deck-minimal",
   description:
-    "12-step pipeline: ffmpeg title cards per scene → FCPXML → FCP import → ProRes slideshow via Compressor. " +
-    "Each scene gets a solid-color card with its title (primary/secondary brand colors). " +
-    "Reads a ProjectV2 project.json. Dry-run safe. Idempotent via replay manifest. " +
-    "For a Motion-rendered trailer with per-scene .motn templates, use steam-trailer-minimal.",
+    "13-step pipeline: Pixelmator brand cards per scene → optional per-scene Motion lower-third render → " +
+    "FCPXML → FCP import → Compressor encode → verify. " +
+    "When motionTemplatePath is set, render-scene-clips produces Motion-rendered clips and " +
+    "compressor-encode uses them as the source (brand cards are the fallback). " +
+    "Reads a ProjectV2 project.json. Dry-run safe. Idempotent via replay manifest.",
   stepNames: STEP_NAMES,
   run,
 };

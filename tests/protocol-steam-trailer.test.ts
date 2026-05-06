@@ -1,7 +1,7 @@
 /**
  * Integration tests for steam-trailer-minimal protocol — dry-run only.
  *
- * These tests run the full 12-step pipeline in dry-run mode.
+ * These tests run the full 13-step pipeline in dry-run mode.
  * No AppleScript, no Compressor, no FCP — all external calls are mocked.
  * Files are written to a temp directory.
  */
@@ -90,7 +90,7 @@ describe("describeProtocol", () => {
 // ---------------------------------------------------------------------------
 
 describe("steam-trailer-minimal dry-run", () => {
-  it("yields exactly 12 steps", async () => {
+  it("yields exactly 13 steps", async () => {
     const steps: Array<{ stepName: string; status: string }> = [];
     for await (const step of runProtocol({
       name: "steam-trailer-minimal",
@@ -213,13 +213,12 @@ describe("replay manifest", () => {
     expect(manifest.idempotencyKey).toMatch(/^[0-9a-f]{32}$/);
   });
 
-  it("manifest has 12 step entries", async () => {
+  it("manifest has 12 step entries (13 steps minus write-replay-manifest)", async () => {
     const manifestPath = join(tmpDir, "out", ".csos", `replay-${taskId}.json`);
     const raw = await readFile(manifestPath, "utf-8");
     const manifest = JSON.parse(raw) as ReplayManifest;
-    // write-replay-manifest step writes itself last; 11 steps in manifest body
-    // (the 12th step writes the manifest, so has 11 entries from prior steps)
-    // Actually all 11 non-final steps are in completedSteps; final step writes manifest
+    // write-replay-manifest writes itself last; the manifest body contains all
+    // prior steps (STEP_NAMES.length - 1 = 12).
     expect(manifest.steps.length).toBe(STEP_NAMES.length - 1);
   });
 

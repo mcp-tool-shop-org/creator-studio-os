@@ -60,7 +60,7 @@
       "notes": "csos_protocol_run tying all 8 apps together in sequence — brand cards, Motion title, FCPXML build, FCP import, Compressor encode — one command, twelve steps."
     }
   ],
-  "motionTemplatePath": "",
+  "motionTemplatePath": "/Applications/Motion Creator Studio.app/Contents/Resources/Templates.localized/Compositions.localized/Atmospheric.localized/Atmospheric-Lower Third.localized/Atmospheric-Lower Third.motn",
   "motionTitleText": "Creator Studio OS",
   "scoreMap": {
     "scenes": [
