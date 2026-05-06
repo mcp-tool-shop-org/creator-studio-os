@@ -38,9 +38,15 @@ The orchestrator pattern proven by `protocol.brand-deck-minimal` (v1.7.0 surface
 
 **Smoke Phase 8 extends:** each new protocol adds a fixture project + an asserted-deliverable shape. Phase 8 becomes the regression substrate — when an orchestrator change drifts, every protocol's smoke catches it.
 
-## Phase 5 — v2.1.x — Frontier protocols
+## Phase 5 — v2.1.x — Frontier protocols + generation leaf
 
-Protocols that compose canon-bound assets and Motif integration into deliverables that no other MCP family can produce, because no other MCP owns all 8 apps + a shared canon source + a shared score-map. Each requires operator-specific context (canon dir, Motif score-map).
+csos becomes a generation + orchestration plane. The canon-bound protocols below need image generation inline rather than as a separate operator step — Phase 5 brings that capability in via a new leaf package, then composes it into protocols that no other MCP family can produce (because no other MCP owns all 8 apps + a shared canon source + a shared score-map + an integrated diffusion runtime).
+
+### Leaf-package addition
+
+- **`@creator-studio-os/comfy`** — wrapper that imports [`comfy-headless`](https://github.com/mcp-tool-shop-org/comfy-headless) and exposes its tools under csos's tool-compass surface. Tighter coupling than the prior file-path contract: csos protocols can now generate images mid-pipeline (e.g. brand cards, character portraits, scene plates) and consume them in the same run, without an operator-managed handoff. Same coverage / provenance / per-package CHANGELOG / signed-publish discipline as the other 9 packages. Lives at `packages/comfy/` in the workspace.
+
+### Frontier protocols (built on the generation leaf)
 
 - **`protocol.canon_to_trailer`** — read a canon dir (`/canon/*.md`) + Motif score-map → author a trailer's beat list from canon prose → orchestrate the brand-deck pipeline against it. The first protocol that authors content from upstream operator artifacts.
 - **`protocol.devlog_from_commits`** — parse git log of an operator-specified repo for the last N days → Apple Intelligence Writing Tools rewrite into devlog narration → orchestrate `protocol.devlog` against the rewritten script.
@@ -88,11 +94,10 @@ Reserved for breaking-change work that requires major-version coordination acros
 - `.fcpbundle` flexolibrary parsing. Volatile DeepSkyLite Core Data — touch only via FCPXML round-trip.
 - Logic `ProjectData` parsing. Binary, undocumented, EULA-adjacent.
 - Private-framework calls (`Compressor.framework`, `Interchange.framework`). Park as research-only.
-- Image generation inside csos. Generation belongs to `comfy-headless` / `style-dataset-lab` / `sprite-foundry` / `trellis-sprite-pipeline` — already shipped family members. csos consumes their outputs via `project.json` asset paths.
 - Marketplace registry build. Open the door (publishing convention) — don't build the building.
 
 ## Total surface
 
-Today: **153 tools, 2 protocols, 10 packages live on npm.** End of Phase 3: ~203 tools, 2 protocols. End of Phase 4: ~203 tools, 7 protocols. End of Phase 5: ~203 tools, 12 protocols + canon-bound integration. End of Phase 6: ~210 tools, 12 protocols + reverse-pipeline + Apple Intelligence enrichment. End of Phase 7: multi-machine farm, marketplace pattern, sustained product. Phase 8 (v3.0) is breaking-change work — major-version coordinated migrations.
+Today: **153 tools, 2 protocols, 10 packages live on npm.** End of Phase 3: ~203 tools, 2 protocols, 10 packages. End of Phase 4: ~203 tools, 7 protocols, 10 packages. End of Phase 5: ~203 tools + comfy-headless surface, 12 protocols, **11 packages** (adds `@creator-studio-os/comfy`), canon-bound integration. End of Phase 6: ~210 tools + comfy, 12 protocols + reverse-pipeline + Apple Intelligence enrichment. End of Phase 7: multi-machine farm, marketplace pattern, sustained product. Phase 8 (v3.0) is breaking-change work — major-version coordinated migrations.
 
 Multi-quarter build, not a sprint. v2.0.x is shipped — Phase 3 (per-app depth) is the next director's call.
