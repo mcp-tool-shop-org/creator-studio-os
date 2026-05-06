@@ -1,25 +1,56 @@
 {
   "name": "@creator-studio-os/logic",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Logic Pro tools for Creator Studio OS — lifecycle management and .logicx project open handoff",
-  "keywords": ["mcp", "model-context-protocol", "logic-pro", "apple", "macos", "audio"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "logic-pro",
+    "apple",
+    "macos",
+    "audio"
+  ],
   "license": "MIT",
   "author": "mcp-tool-shop <64996768+mcp-tool-shop@users.noreply.github.com>",
   "homepage": "https://github.com/mcp-tool-shop-org/creator-studio-os",
-  "repository": { "type": "git", "url": "git+https://github.com/mcp-tool-shop-org/creator-studio-os.git", "directory": "packages/logic" },
-  "bugs": { "url": "https://github.com/mcp-tool-shop-org/creator-studio-os/issues" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcp-tool-shop-org/creator-studio-os.git",
+    "directory": "packages/logic"
+  },
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/creator-studio-os/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": "./dist/index.js" },
-  "files": ["dist", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md"],
-  "engines": { "node": ">=20.0.0" },
-  "os": ["darwin"],
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "os": [
+    "darwin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
-    "@creator-studio-os/core": "2.0.0",
+    "@creator-studio-os/core": "2.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.25.0"
   },
-  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.7.0" }
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
 }

@@ -9,13 +9,14 @@
 <p align="center">
   <a href="https://github.com/mcp-tool-shop-org/creator-studio-os/actions/workflows/ci.yml"><img src="https://github.com/mcp-tool-shop-org/creator-studio-os/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://codecov.io/gh/mcp-tool-shop-org/creator-studio-os"><img src="https://codecov.io/gh/mcp-tool-shop-org/creator-studio-os/branch/main/graph/badge.svg" alt="Coverage"></a>
+  <a href="https://www.npmjs.com/org/creator-studio-os"><img src="https://img.shields.io/badge/npm-%40creator--studio--os-CB3837.svg" alt="npm scope"></a>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
   <a href="https://mcp-tool-shop-org.github.io/creator-studio-os/"><img src="https://img.shields.io/badge/docs-handbook-informational" alt="Handbook"></a>
 </p>
 
 MCP control plane for Apple Creator Studio apps. Drive **Final Cut Pro**, **Compressor**, **Motion**, **Pixelmator Pro**, **Logic Pro**, **Keynote**, **Pages**, and **Numbers** from Claude or any MCP client — compose video deliverables from a JSON spec, render Motion lower-thirds headlessly, encode via Compressor, and generate brand assets in one cross-app pipeline.
 
-> **v1.7.10** — 78 tools across all 8 Apple Creator Studio apps. Cross-app composite protocol live: Pixelmator brand cards + Motion ProRes 4444 lower-thirds + Compressor final encode. 9/9 smoke phases green. macOS only.
+> **v2.0.1** — 153 tools across all 8 Apple Creator Studio apps, distributed as **10 published npm packages** under [`@creator-studio-os`](https://www.npmjs.com/org/creator-studio-os). 1173 tests, ≥75% line + branch coverage on every package, signed npm provenance attestations. macOS only.
 
 ---
 
@@ -37,10 +38,12 @@ Final Cut Pro's AppleScript dictionary is **read-only** — you can list librari
 
 Full threat model: [`docs/threat-model.md`](./docs/threat-model.md) · [`SECURITY.md`](./SECURITY.md)
 
-## Install
+## Install — full CLI
+
+The umbrella package ships the `creator-studio-os` binary with `serve`, `verify`, `smoke`, and `protocol run` subcommands across all 153 tools:
 
 ```bash
-npm install -g @mcptoolshop/creator-studio-os
+npm install -g @creator-studio-os/creator-studio-os
 ```
 
 MCP client config (`claude_desktop_config.json` or equivalent):
@@ -59,8 +62,25 @@ MCP client config (`claude_desktop_config.json` or equivalent):
 Or via npx:
 
 ```json
-{ "command": "npx", "args": ["-y", "@mcptoolshop/creator-studio-os", "serve"] }
+{ "command": "npx", "args": ["-y", "@creator-studio-os/creator-studio-os", "serve"] }
 ```
+
+## Install — single app
+
+If you only need one app's tools (for example, embedding FCPXML authoring in another tool), pull in just that package:
+
+```bash
+npm install @creator-studio-os/fcp           # Final Cut Pro (22 tools)
+npm install @creator-studio-os/motion        # Motion (10 tools)
+npm install @creator-studio-os/pixelmator    # Pixelmator Pro (33 tools)
+npm install @creator-studio-os/compressor    # Compressor (15 tools)
+npm install @creator-studio-os/keynote       # Keynote (56 tools)
+npm install @creator-studio-os/logic         # Logic Pro (3 tools)
+npm install @creator-studio-os/iwork-docs    # Pages + Numbers (10 tools)
+npm install @creator-studio-os/protocols     # Cross-app pipelines (3 tools)
+```
+
+All 10 packages are published under the [`@creator-studio-os`](https://www.npmjs.com/org/creator-studio-os) npm scope with signed provenance attestations. See the [Packages handbook page](https://mcp-tool-shop-org.github.io/creator-studio-os/handbook/packages/) for the dependency graph + per-package specifics.
 
 ## Verify your setup
 
@@ -72,7 +92,7 @@ Checks platform, `osascript`, `xmllint`, Final Cut Pro install, FCPXML 1.14 DTD,
 
 ## Data directory
 
-Default: `/Volumes/T9-Shared/AI/creator-studio` (override with `CREATOR_STUDIO_DATA_DIR`).
+Default: `~/creator-studio/` (override with `CREATOR_STUDIO_DATA_DIR`).
 
 ```
 creator-studio/
@@ -115,119 +135,53 @@ creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/p
 13 write-replay-manifest  — finalise manifest with completedAt
 ```
 
-The `project.json` format: [`src/projects/types.ts`](./src/projects/types.ts) · demo: [`demo/csos-showcase/project.json`](./demo/csos-showcase/project.json)
+The `project.json` schema lives in [`@creator-studio-os/core`](https://www.npmjs.com/package/@creator-studio-os/core). Demo: [`demo/csos-showcase/project.json`](./demo/csos-showcase/project.json)
 
-## Tools
+## Tools (153 across 8 apps)
 
-### Final Cut Pro (22 tools)
+The full reference is in the [handbook](https://mcp-tool-shop-org.github.io/creator-studio-os/handbook/reference/) and on each package's npm page.
 
-| Tool | Purpose |
-|------|---------|
-| `fcp_project_list` | List projects in the data directory |
-| `fcp_project_create` | Create a project directory + `project.json` |
-| `fcp_project_info` | Read project metadata + resolved paths |
-| `fcp_fcpxml_build` | Build FCPXML 1.14 from a JSON spec |
-| `fcp_fcpxml_validate` | Validate FCPXML against the bundled DTD |
-| `fcp_fcpxml_write` | Write FCPXML to `projects/<name>/fcp/` |
-| `fcp_fcpxml_import` | Open an FCPXML file in Final Cut Pro |
-| `fcp_fcpxml_build_write_import` | End-to-end: build → validate → write → import |
-| `fcp_library_list` | List libraries open in FCP |
-| `fcp_library_events` | List events in a library |
-| `fcp_event_projects` | List projects in an event |
-| `fcp_project_metadata` | Read sequence duration, frame rate, timecode format |
-| `fcp_app_open` / `fcp_app_running` / `fcp_app_activate` | Lifecycle |
-| `fcp_round_trip_diff` | Compare two FCPXML files, emit structured diff |
-| `fcp_fcpxml_add_title` | Add a Titles effect clip to a spine |
-| `fcp_fcpxml_add_transition` | Add a transition between clips |
-| `fcp_fcpxml_add_marker` | Add a chapter/to-do/completion marker |
-| `fcp_safety_preflight` | Check all FCPXML source files exist before import |
-| `fcp_multicam_build` | Build a multicam clip from angle specs |
-| `fcp_caption_build` | Build a caption track from a transcript |
-| `fcp_compound_clip_build` | Build a compound clip from nested spine specs |
+### Final Cut Pro — 22 tools — [`@creator-studio-os/fcp`](https://www.npmjs.com/package/@creator-studio-os/fcp)
 
-### Compressor (15 tools)
+FCPXML 1.14 authoring, DTD validation via `xmllint`, library/event introspection, round-trip diff, multicam / caption / compound-clip builders. FCP's AppleScript dictionary is read-only — all authoring goes through FCPXML import.
 
-Compressor has no AppleScript dictionary — surface is the CLI plus `.compressorbatch` files. First invocation per session triggers App Store entitlement validation (expected).
+### Compressor — 15 tools — [`@creator-studio-os/compressor`](https://www.npmjs.com/package/@creator-studio-os/compressor)
 
-| Tool | Purpose |
-|------|---------|
-| `compressor_app_open` / `compressor_app_running` | Lifecycle |
-| `compressor_settings_list` | Enumerate `.compressorsetting` presets |
-| `compressor_locations_list` | Enumerate `.compressorlocation` files |
-| `compressor_encode` | Submit a single encode job |
-| `compressor_encode_project` | Encode relative to a project's directory |
-| `compressor_monitor_stream` | Stream encode progress frames |
-| `compressor_job_status` | Poll a single job's status |
-| `compressor_batch_status` | Poll all active batch jobs |
-| `compressor_cancel_job` | Cancel an active job |
-| `compressor_settings_inspect` | Inspect a `.compressorsetting` file |
-| `compressor_batch_build` | Build a `.compressorbatch` XML document |
-| `compressor_await_output` | Block until an output file is non-empty |
-| `compressor_daemon_recover` | Recover a stuck Compressor daemon |
+Headless encode via the Compressor CLI, live progress via `-monitor -format json`, batch builder, daemon recovery. Compressor has no AppleScript dictionary — surface is the CLI plus `.compressorbatch` files. First invocation per session triggers App Store entitlement validation (expected). See [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md).
 
-See [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md).
+### Motion — 10 tools — [`@creator-studio-os/motion`](https://www.npmjs.com/package/@creator-studio-os/motion)
 
-### Motion (10 tools)
+Clone `.motn` templates, patch published parameters via OZML edit (`editText` for glyph-inside-text layout, `patchSiblingText` for Apple Compositions sibling layout), render headlessly via Compressor.
 
-| Tool | Purpose |
-|------|---------|
-| `motion_app_open` / `motion_app_running` | Lifecycle |
-| `motion_open` | Open a `.motn` template |
-| `motion_template_clone` | Clone a `.motn` template to a new path |
-| `motion_template_set_param` | Set a published parameter value (OZML edit) |
-| `motion_template_get_params` | List all published parameters in a template |
-| `motion_template_validate` | Validate OZML structure of a `.motn` file |
-| `motion_template_publish_catalog` | List all templates in Motion's publish catalog |
-| `motion_publish_to_fcp` | Publish a Motion template to FCP's Title browser |
-| `motion_render_via_compressor` | Headlessly render a `.motn` to video via Compressor |
+> `motion_template_set_param` and `motion_render_via_compressor` have **zero prior art in any MCP globally** — headless Motion OZML mutation and render are uniquely enabled by csos.
 
-Note: `motion_template_set_param` and `motion_render_via_compressor` have zero prior art in any MCP globally — headless Motion OZML mutation and render are uniquely enabled by csos.
+### Pixelmator Pro — 33 tools — [`@creator-studio-os/pixelmator`](https://www.npmjs.com/package/@creator-studio-os/pixelmator)
 
-### Pixelmator Pro (33 tools)
+Full Pixelmator Pro sdef coverage: layers (create / delete / move / text / fill), ML effects (catalog + apply), brand card composition with hue rotation, blend modes, HDR export, document I/O.
 
-| Tool | Purpose |
-|------|---------|
-| `pixelmator_app_open` / `pixelmator_app_running` | Lifecycle |
-| `pixelmator_open` / `pixelmator_close` | Open / close documents |
-| `pixelmator_export` | Export to PNG / JPEG / TIFF / HEIC / GIF / WebP / PDF / SVG |
-| `pixelmator_resize` / `pixelmator_crop` / `pixelmator_rotate` / `pixelmator_flip` | Transform |
-| `pixelmator_batch_export_project_images` | Batch convert `projects/<name>/images/` |
-| `pixelmator_layer_list` / `pixelmator_layer_create` / `pixelmator_layer_delete` | Layer management |
-| `pixelmator_layer_set_text` / `pixelmator_layer_set_fill` / `pixelmator_layer_move` | Layer editing |
-| `pixelmator_effects_apply` / `pixelmator_effects_catalog` | ML effects pipeline |
-| `pixelmator_compose_brand_card` | Compose a hue-rotated brand card with title text |
-| `pixelmator_hdr_export` | Export with HDR tone mapping |
-| `pixelmator_text_card` | Render a text-only card with font + color control |
+### Keynote — 56 tools — [`@creator-studio-os/keynote`](https://www.npmjs.com/package/@creator-studio-os/keynote)
 
-### Logic Pro (3 tools)
+The largest single-app surface in the family. Slide composition, theme binding, markdown ingestion, storyboard → FCPXML bridge, ML ops, multi-format export (PDF / images / movie / PPTX).
+
+### Logic Pro — 3 tools — [`@creator-studio-os/logic`](https://www.npmjs.com/package/@creator-studio-os/logic)
 
 Logic has no AppleScript dictionary. Surface: lifecycle + file-open handoff for `.logicx` projects.
 
-| Tool | Purpose |
-|------|---------|
-| `logic_app_open` / `logic_app_running` | Lifecycle |
-| `logic_open` | Open a `.logicx` project |
+### Pages + Numbers — 10 tools — [`@creator-studio-os/iwork-docs`](https://www.npmjs.com/package/@creator-studio-os/iwork-docs)
 
-### Keynote / Pages / Numbers (18 tools combined)
+Document automation, table I/O, multi-format export. **Pages (5):** open / close / export PDF / Word / EPUB. **Numbers (5):** open / close / export PDF / Excel / CSV.
 
-All three share a near-identical AppleScript shape. Full export-format catalog: [`docs/reference/iwork-automation.md`](./docs/reference/iwork-automation.md).
+### Protocols — 3 tools — [`@creator-studio-os/protocols`](https://www.npmjs.com/package/@creator-studio-os/protocols)
 
-**Keynote (8 tools):** open, close, export PDF / images / movie / PPTX, lifecycle  
-**Pages (5 tools):** open, close, export PDF / Word / RTF / EPUB, lifecycle  
-**Numbers (5 tools):** open, close, export PDF / Excel / CSV, lifecycle
+Cross-app orchestration. `csos_protocol_run` (run a pipeline), `csos_protocol_list`, `csos_protocol_describe`. Reference protocols: `brand-deck-minimal`, `steam-trailer-minimal`.
 
-### Infrastructure
+### Infrastructure — 1 tool — [`@creator-studio-os/core`](https://www.npmjs.com/package/@creator-studio-os/core)
 
-| Tool | Purpose |
-|------|---------|
-| `csos_app_status` | Health check for all 8 apps (running, version, queue depth) |
-| `csos_protocol_run` | Run a cross-app protocol end-to-end (async, streams steps) |
-| `csos_protocol_list` | List all registered protocols |
-| `csos_protocol_describe` | Describe a protocol's steps and purpose |
+`csos_app_status` — health check for all 8 apps (running, version, queue depth). The rest of `core` is shared runtime — AppleScript runners, project schema, ledger, structured errors.
 
 ## Recommended setup with tool-compass
 
-[tool-compass](https://github.com/mcp-tool-shop-org/tool-compass) is a semantic HNSW gateway that finds the right tool from natural-language intent — essential when 78 tools span 8 apps.
+[tool-compass](https://github.com/mcp-tool-shop-org/tool-compass) is a semantic HNSW gateway that finds the right tool from natural-language intent — essential when 153 tools span 8 apps.
 
 ```bash
 pip install tool-compass
@@ -239,24 +193,25 @@ The smoke harness validates 12 representative queries in Phase 7. Any descriptio
 
 The first time the server uses AppleScript against an app, macOS prompts to grant **Automation permission** in System Settings → Privacy & Security → Automation. Read-only AppleScript still requires this grant.
 
-## CI / verify
+## Quality bar
 
-| Check | What |
-|-------|------|
+| Gate | What |
+|------|------|
 | **A. Security** | [`SECURITY.md`](./SECURITY.md), [`docs/threat-model.md`](./docs/threat-model.md), no secrets, no telemetry, no network |
 | **B. Errors** | `CreatorStudioError { code, message, hint }`, CLI exit codes, no raw stacks |
-| **C. Docs** | This README, [`CHANGELOG.md`](./CHANGELOG.md), [`LICENSE`](./LICENSE), `--help` accurate |
-| **D. Hygiene** | `npm test`, `npm run typecheck`, version matches tag, `npm audit`, clean packaging |
+| **C. Docs** | This README, [`CHANGELOG.md`](./CHANGELOG.md), [`LICENSE`](./LICENSE), `--help` accurate, [handbook](https://mcp-tool-shop-org.github.io/creator-studio-os/) deployed |
+| **D. Hygiene** | `npm test` (1173 tests), `npm run typecheck`, `npm audit`, version matches tag, clean packaging |
+| **E. Coverage** | **≥75% line + ≥75% branch on every publishable package.** Codecov enforces via per-package flags. |
 
-CI runs on `ubuntu-latest` (typecheck + build + unit tests + audit). Integration tests against real apps run via `npm run smoke:ci` — macOS runners are intentionally not in CI (cost: macOS ≈ 10× Linux per minute).
+CI runs on `ubuntu-latest` (typecheck + build + unit tests + audit + per-package coverage upload). Integration tests against real apps run via `npm run smoke:ci` — macOS runners are intentionally not in CI (cost: macOS ≈ 10× Linux per minute).
 
 ## Roadmap
 
-- **v1.7.x** — cross-app composite protocol (`brand-deck-minimal`): Pixelmator brand cards + Motion lower-thirds + Compressor encode → ProRes MOV — **live at v1.7.10**
-- **v1.8.x** — `patchSiblingText` text-bounds validation: ledger warning when incoming text may clip fixed Motion template render bounds
-- **v2.0** — Phase 3: expanded protocol surface (Steam trailer, devlog, social card pipelines)
+- **v2.0** — **shipped 2026-05-06.** Monorepo decomposition into 10 npm packages, 153 tools, 1173 tests, per-package coverage floor, signed provenance.
+- **v2.x** — Phase 3 surface: Steam trailer protocol, devlog protocol, social card pipelines, deeper Logic + Numbers automation.
+- **v1.8.x** (still in flight as a backport) — `patchSiblingText` text-bounds validation: ledger warning when incoming text may clip fixed Motion template render bounds.
 
-App roadmaps: [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md), [`docs/roadmap-compressor.md`](./docs/roadmap-compressor.md), [`docs/roadmap.md`](./docs/roadmap.md).
+App roadmaps: [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md), [`docs/roadmap-compressor.md`](./docs/roadmap-compressor.md), [`docs/phase-3.md`](./docs/phase-3.md), [`docs/roadmap.md`](./docs/roadmap.md).
 
 ## License
 

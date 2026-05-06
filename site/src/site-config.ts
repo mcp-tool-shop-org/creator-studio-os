@@ -10,7 +10,7 @@ export const config: SiteConfig = {
   footerText: 'MIT Licensed — built by <a href="https://mcp-tool-shop.github.io/" style="color:var(--color-muted);text-decoration:underline">MCP Tool Shop</a>',
 
   hero: {
-    badge: 'v2.0.0 · 10 packages · macOS only',
+    badge: 'v2.0.1 · 10 packages · macOS only',
     headline: 'Eight Apple apps.',
     headlineAccent: 'One control plane.',
     description: 'Drive Final Cut Pro, Compressor, Motion, Pixelmator Pro, Logic Pro, Keynote, Pages, and Numbers from Claude — 153 tools across 10 published packages, 1173 tests, ≥75% coverage on every package.',

@@ -1,6 +1,6 @@
 {
   "name": "creator-studio-os-workspace",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Workspace root — npm workspaces for @creator-studio-os/* packages",
   "workspaces": [

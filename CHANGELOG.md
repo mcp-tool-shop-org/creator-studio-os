@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] — 2026-05-06
+
+### Documentation + translations alignment
+
+Doc-only release. Source code and tool surface unchanged from 2.0.0.
+
+**Fixed:**
+- Root `README.md` updated to v2.0.0 reality — was still rendering "v1.7.10 / 78 tools" on the GitHub repo home + the umbrella package's npm page after the v2.0.0 publish. Now reflects 153 tools / 10 packages / per-package install paths / coverage floor / shipped-v2.0 roadmap.
+- Translator-induced malformed H1 (`# \`\`\`text` code-fence wrap) on 5 of 18 ja+zh per-package READMEs (pixelmator, fcp, keynote). Stripped via `perl -i -0pe`. Latin-script translations (es/fr/hi/it/pt-BR) were not affected. Reference: `memory/polyglot-cjk-h1-mangling.md`.
+
+**Added:**
+- Umbrella app translations — `apps/creator-studio-os/README.{es,fr,hi,it,ja,pt-BR,zh}.md`. Brings the published translation surface to 11 READMEs × 7 languages = **77 translation files**.
+- `.github/` polish — `CODEOWNERS`, `FUNDING.yml`, `PULL_REQUEST_TEMPLATE.md`, `ISSUE_TEMPLATE/{bug_report,feature_request,config}`.
+- Site landing handbook page `packages.md` — dependency graph, all 10 packages, per-package quality bar.
+- Repo topics on GitHub — `keynote`, `logic-pro`, `numbers`, `pages`, `typescript`, `monorepo`, `npm-package`, `applescript`, `motion`, `automation`.
+
+**Internal dep version-skew fix:**
+- All inter-package dependencies bumped from `"2.0.0"` to `"2.0.1"` so the v2.0.1 family resolves cleanly.
+
 ## [2.0.0] — 2026-05-06
 
 ### Breaking: monorepo decomposition
