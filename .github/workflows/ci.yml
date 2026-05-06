@@ -5,17 +5,19 @@ on:
     branches: [main]
     paths:
       - "package.json"
-      - "src/**"
+      - "packages/**"
+      - "apps/**"
       - "tests/**"
-      - "tsconfig.json"
+      - "tsconfig*.json"
       - "vitest.config.ts"
       - ".github/workflows/**"
   pull_request:
     paths:
       - "package.json"
-      - "src/**"
+      - "packages/**"
+      - "apps/**"
       - "tests/**"
-      - "tsconfig.json"
+      - "tsconfig*.json"
       - "vitest.config.ts"
       - ".github/workflows/**"
   workflow_dispatch:

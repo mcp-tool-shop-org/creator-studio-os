@@ -1,0 +1,56 @@
+coverage:
+  precision: 2
+  round: down
+  range: "75...100"
+  status:
+    project:
+      default:
+        target: 75%
+        threshold: 2%
+
+flag_management:
+  default_rules:
+    carryforward: true
+
+flags:
+  core:
+    paths:
+      - packages/core/
+    carryforward: true
+  compressor:
+    paths:
+      - packages/compressor/
+    carryforward: true
+  fcp:
+    paths:
+      - packages/fcp/
+    carryforward: true
+  iwork-docs:
+    paths:
+      - packages/iwork-docs/
+    carryforward: true
+  keynote:
+    paths:
+      - packages/keynote/
+    carryforward: true
+  logic:
+    paths:
+      - packages/logic/
+    carryforward: true
+  motion:
+    paths:
+      - packages/motion/
+    carryforward: true
+  pixelmator:
+    paths:
+      - packages/pixelmator/
+    carryforward: true
+  protocols:
+    paths:
+      - packages/protocols/
+    carryforward: true
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: false
