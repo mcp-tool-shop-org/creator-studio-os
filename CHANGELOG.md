@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.12] — 2026-05-06
+
+### Changed (npm publish prep)
+- **Package rename:** `@mcptoolshop/creator-studio-os` → `@creator-studio-os/creator-studio-os`. Per `CLAUDE.md` publish-target rule. The `@creator-studio-os` scope is the canonical npm home for this product.
+- **First public npm publish.** Triggered by GitHub Release v1.7.12 → `npm publish --access public --provenance` via `.github/workflows/publish.yml`.
+
+### Translations on disk (5 of 7)
+- ja, zh, es, fr, pt-BR present and verified non-degenerate (15-17KB each, full content)
+- **hi (Hindi) and it (Italian) deferred to v1.7.13** — polyglot-mcp run completed only 5 of 7 languages; re-run picks up the cache and fills in the remaining two.
+
+---
+
 ## [1.7.11] — 2026-05-06
 
 ### Added (Full Treatment — Phases 0, 4 partial)
