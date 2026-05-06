@@ -1,6 +1,6 @@
 {
   "name": "@mcptoolshop/creator-studio-os",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "description": "MCP control plane for Apple Creator Studio apps. FCPXML-driven timeline authoring with canonical project directories.",
   "keywords": [
     "mcp",

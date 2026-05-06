@@ -271,17 +271,23 @@ async function* run(
           // Rotate hue 25° per scene → visually distinct frames across the deck
           const hue = (baseH + i * 25) % 360;
           const sceneHex = hslToHex(hue, Math.max(baseS, 0.3), Math.max(baseL, 0.15));
+          // Pitfall: background shape class is "rectangle shape layer", NOT "rectangle".
+          // "make new rectangle" produces error -2710 which the catch silently swallows,
+          // falling back to ffmpeg lavfi. This was the root cause of solid-color-only
+          // output from v1.7.0–v1.7.3. Text styling uses `tell text content of layer`
+          // per the sdef canonical form — verified working in Pixelmator Pro 4.2.
           const script = `
 tell application id "${cfg.pixelmatorBundleId}"
   set newDoc to make new document with properties {width:${width}, height:${height}, resolution:72}
   tell newDoc
-    set bgLayer to make new rectangle at beginning of layers with properties {name:"bg", position:{0, 0}, width:${width}, height:${height}}
+    set bgLayer to make new rectangle shape layer at beginning of layers with properties {name:"bg", position:{0, 0}, width:${width}, height:${height}}
     set fill color of styles of bgLayer to {${hexToRgb16(sceneHex)}}
     set titleLayer to make new text layer at beginning of layers with properties {name:"title", text content:"${escapeAs(scene.title)}"}
     tell text content of titleLayer
       set its size to 96
       set its color to {${hexToRgb16(fgHex)}}
     end tell
+    set horizontal alignment of titleLayer to center
     set position of titleLayer to {${Math.round(width / 2)}, ${Math.round(height / 2)}}
     export to (POSIX file "${cardPath}") as PNG
   end tell

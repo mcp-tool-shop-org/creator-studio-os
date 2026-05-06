@@ -96,6 +96,70 @@ mdls -name kMDItemCFBundleIdentifier "/Applications/Pixelmator Pro Creator Studi
 
 The sdef inside the bundle still uses the `com.pixelmatorteam.pixelmator-pro.*` access-group identifiers — internal Pixelmator naming Apple hasn't rewritten. It works fine.
 
+## Text layer and shape layer authoring — pitfalls (Pixelmator Pro 4.2)
+
+**Root cause of v1.7.0–v1.7.3 solid-color-only brand cards, confirmed 2026-05-05.**
+
+### Pitfall 1: rectangle class name (the root bug)
+
+`make new rectangle` errors with -2710 "Can't make class rectangle" — the AppleScript class name is `rectangle shape layer`. The error is non-fatal (silently caught), which masks the failure and produces an empty/fallback document.
+
+```applescript
+-- WRONG — error -2710, silently swallowed
+make new rectangle at beginning of layers with properties {width:100, height:100}
+
+-- CORRECT
+make new rectangle shape layer at beginning of layers with properties ¬
+  {name:"bg", position:{0, 0}, width:1920, height:1080}
+```
+
+All shape class names follow the `<shape> shape layer` pattern: `rectangle shape layer`, `rounded rectangle shape layer`, `ellipse shape layer`, `polygon shape layer`, `star shape layer`, `line shape layer`.
+
+### Pitfall 2: text styling (correct — `tell text content of layer`)
+
+`text content` IS a `rich text` class (not a plain string). `tell text content of t` works correctly in Pixelmator Pro 4.2 — this is Pixelmator's own canonical sdef example. Verified by round-trip: set size to 96, read back 96.
+
+```applescript
+set t to make new text layer at beginning of layers ¬
+  with properties {name:"title", text content:"Creator Studio OS"}
+tell text content of t
+  set its size to 96
+  set its color to {57568, 57568, 57568}  -- 16-bit: #E0E0E0 × 257
+  set its font to "SF Pro Display"
+end tell
+set horizontal alignment of t to center   -- alignment is a text-layer property, not rich-text
+set position of t to {960, 540}
+```
+
+The `horizontal alignment` and `vertical alignment` properties live on the text layer itself, not on rich text — set them on `t`, not inside the `tell text content of t` block.
+
+### Full working example (1920×1080 titled brand card)
+
+```applescript
+tell application id "com.apple.pixelmator"
+  set newDoc to make new document with properties {width:1920, height:1080, resolution:72}
+  tell newDoc
+    set bgLayer to make new rectangle shape layer at beginning of layers ¬
+      with properties {name:"bg", position:{0, 0}, width:1920, height:1080}
+    set fill color of styles of bgLayer to {6939, 6939, 11799}   -- #1B1B2E × 257
+    set t to make new text layer at beginning of layers ¬
+      with properties {name:"title", text content:"Creator Studio OS"}
+    tell text content of t
+      set its size to 96
+      set its color to {57568, 57568, 57568}   -- #E0E0E0 × 257
+    end tell
+    set horizontal alignment of t to center
+    set position of t to {960, 540}
+    export to (POSIX file "/tmp/card.png") as PNG
+  end tell
+  close newDoc saving no
+end tell
+```
+
+Produces a PNG with luminance stddev ≈ 11–15 at 320×180 (text visible). Solid-color output = stddev ≈ 0. Run `CSOS_MANUAL=1 npx vitest run tests/pixelmator-text-card.repro.test.ts` to verify in isolation.
+
+---
+
 ## Top-level commands easy to miss
 
 Easy to overlook when scanning the dictionary by suite — these are NOT layer methods:

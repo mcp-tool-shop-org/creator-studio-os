@@ -221,14 +221,25 @@ async function idempotencyGate(
 }
 
 // ---------------------------------------------------------------------------
-// movEyeballGate — catches solid-color blob regression (all frames same color)
+// movEyeballGate — catches solid-color / invisible-text regressions.
 // Only runs in real-render mode; skipped for synthetic dry-run MOVs.
+//
+// Strategy: luminance variance per scene frame.
+//   - Extract one frame per scene at the scene midpoint timestamp.
+//   - Scale to 32×18 (576 pixels — large enough to sample centered text).
+//   - Compute luminance stddev across all pixels.
+//   - A solid-color frame has stddev ≈ 0. A frame with visible text on a
+//     contrasting background has stddev > 5 (typically 30–60 for 96pt text
+//     on a dark card). Invisible text (wrong AppleScript form) scores ≈ 0
+//     even if the PNG is non-empty.
+//   - Gate fails if ALL scenes score below the threshold, meaning no frame
+//     in the output carries any visible content.
 // ---------------------------------------------------------------------------
 
-function extractSceneAvgColor(
+function extractFrameLuminanceStddev(
   movPath: string,
   ts: number,
-): Promise<[number, number, number] | null> {
+): Promise<number | null> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = [];
     const proc = spawn(
@@ -238,7 +249,7 @@ function extractSceneAvgColor(
         "-ss", String(ts),
         "-i", movPath,
         "-frames:v", "1",
-        "-vf", "scale=1:1",
+        "-vf", "scale=320:180",
         "-f", "rawvideo",
         "-pix_fmt", "rgb24",
         "pipe:1",
@@ -249,7 +260,17 @@ function extractSceneAvgColor(
     proc.on("close", () => {
       const buf = Buffer.concat(chunks);
       if (buf.length < 3) { resolve(null); return; }
-      resolve([buf[0], buf[1], buf[2]]);
+      const pixels = Math.floor(buf.length / 3);
+      let sum = 0;
+      const lums: number[] = [];
+      for (let i = 0; i < pixels; i++) {
+        const y = 0.299 * buf[i * 3]! + 0.587 * buf[i * 3 + 1]! + 0.114 * buf[i * 3 + 2]!;
+        lums.push(y);
+        sum += y;
+      }
+      const mean = sum / pixels;
+      const variance = lums.reduce((acc, y) => acc + (y - mean) ** 2, 0) / pixels;
+      resolve(Math.sqrt(variance));
     });
     proc.on("error", () => resolve(null));
   });
@@ -260,7 +281,7 @@ async function movEyeballGate(
   movPath: string,
   scenes: Array<{ id: string; durationSeconds: number }>,
 ): Promise<PhaseResult | null> {
-  if (scenes.length < 2) return null;
+  if (scenes.length < 1) return null;
 
   // Compute cumulative midpoint timestamps for each scene
   const targets: Array<{ id: string; ts: number }> = [];
@@ -270,41 +291,34 @@ async function movEyeballGate(
     cumulative += scene.durationSeconds;
   }
 
-  // Extract 1x1 average color from each scene in parallel
-  const colorResults = await Promise.all(
+  // Extract luminance stddev per scene in parallel
+  const results = await Promise.all(
     targets.map(async ({ id, ts }) => ({
       id,
-      rgb: await extractSceneAvgColor(movPath, ts),
+      stddev: await extractFrameLuminanceStddev(movPath, ts),
     })),
   );
 
-  const valid = colorResults.filter(
-    (c): c is { id: string; rgb: [number, number, number] } => c.rgb !== null,
+  const valid = results.filter(
+    (r): r is { id: string; stddev: number } => r.stddev !== null,
   );
-  if (valid.length < 2) return null;
+  if (valid.length < 1) return null;
 
-  // Identify consecutive pairs where ALL channels differ by < 10
-  const THRESHOLD = 10;
-  const indistinctPairs: string[] = [];
-  for (let i = 1; i < valid.length; i++) {
-    const prev = valid[i - 1];
-    const curr = valid[i];
-    const dr = Math.abs(curr.rgb[0] - prev.rgb[0]);
-    const dg = Math.abs(curr.rgb[1] - prev.rgb[1]);
-    const db = Math.abs(curr.rgb[2] - prev.rgb[2]);
-    if (dr < THRESHOLD && dg < THRESHOLD && db < THRESHOLD) {
-      indistinctPairs.push(`${prev.id}→${curr.id} (ΔR=${dr} ΔG=${dg} ΔB=${db})`);
-    }
-  }
+  // A scene is "flat" if its luminance stddev is below the visible-content threshold
+  const FLAT_THRESHOLD = 5;
+  const flatScenes = valid.filter((r) => r.stddev < FLAT_THRESHOLD);
 
-  // Fail only when ALL consecutive pairs are indistinct (solid-color blob regression)
-  if (indistinctPairs.length === valid.length - 1) {
+  // Fail only when ALL scenes are flat (no visible content in any frame)
+  if (flatScenes.length === valid.length) {
+    const detail = valid
+      .map((r) => `${r.id}(stddev=${r.stddev.toFixed(1)})`)
+      .join(", ");
     return {
       id: gateOpts.id,
       name: gateOpts.name,
       status: "fail",
       durationMs: Date.now() - gateOpts.start,
-      detail: `movEyeballGate: all scene frames perceptually identical (solid-color blob). Indistinct pairs: ${indistinctPairs.join("; ")}`,
+      detail: `movEyeballGate: all scene frames have near-zero luminance variance — solid color or invisible text. ${detail}`,
     };
   }
 

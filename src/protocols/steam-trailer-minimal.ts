@@ -226,19 +226,21 @@ async function* run(
           const { primaryColor, secondaryColor } = project.brand;
           // Color pitfall: Pixelmator Pro AppleScript expects 16-bit RGB {0..65535},
           // not 0-1 floats. Use hexToRgb16() which multiplies each 8-bit channel by 257.
-          // Background uses a rectangle shape layer + styles fill (no `fill` command exists).
-          // Text font/color go through `tell text content of layer`, not make properties.
+          // Shape pitfall: background class is "rectangle shape layer", NOT "rectangle".
+          // "make new rectangle" silently fails (-2710) — falling back to the catch block
+          // and producing an empty brand card. Verified against Pixelmator Pro 4.2 sdef.
           const script = `
 tell application id "${cfg.pixelmatorBundleId}"
   set newDoc to make new document with properties {width:1920, height:1080, resolution:72}
   tell newDoc
-    set bgLayer to make new rectangle at beginning of layers with properties {name:"bg", position:{0, 0}, width:1920, height:1080}
+    set bgLayer to make new rectangle shape layer at beginning of layers with properties {name:"bg", position:{0, 0}, width:1920, height:1080}
     set fill color of styles of bgLayer to {${hexToRgb16(primaryColor)}}
     set titleLayer to make new text layer at beginning of layers with properties {name:"title", text content:"${escapeAs(scene.title)}"}
     tell text content of titleLayer
       set its size to 96
       set its color to {${hexToRgb16(secondaryColor)}}
     end tell
+    set horizontal alignment of titleLayer to center
     set position of titleLayer to {960, 540}
     export to (POSIX file "${cardPath}") as PNG
   end tell
