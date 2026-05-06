@@ -12,7 +12,7 @@
     "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc --noEmit",
     "verify": "node apps/creator-studio-os/dist/cli.js verify",
     "smoke": "node apps/creator-studio-os/dist/cli.js smoke",
     "smoke:ci": "node apps/creator-studio-os/dist/cli.js smoke --ci",
