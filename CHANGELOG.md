@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] — 2026-05-06
+
+### Breaking: monorepo decomposition
+
+The monolith is now a **10-package npm workspace**. The umbrella CLI (`@creator-studio-os/creator-studio-os`) is backward-compatible, but the internal structure is entirely different — each app surface is now a first-class publishable package.
+
+**New packages (all at 2.0.0):**
+
+| Package | Tools | What it drives |
+|---------|-------|----------------|
+| `@creator-studio-os/core` | 1 | Shared runtime, AppleScript runners, project schema |
+| `@creator-studio-os/compressor` | 15 | Headless encode, batch jobs, live progress |
+| `@creator-studio-os/fcp` | 22 | FCPXML 1.14 authoring, DTD validation, FCP import |
+| `@creator-studio-os/iwork-docs` | 10 | Pages + Numbers document lifecycle + export |
+| `@creator-studio-os/keynote` | 56 | Full Keynote automation — slides, ML, export, pipeline bridges |
+| `@creator-studio-os/logic` | 3 | Logic Pro launch and `.logicx` project open |
+| `@creator-studio-os/motion` | 10 | OZML template mutation, headless render |
+| `@creator-studio-os/pixelmator` | 33 | Layer editing, ML effects, brand card compositor |
+| `@creator-studio-os/protocols` | 3 | Cross-app orchestration pipelines |
+
+**153 tools across 9 packages.** Install the umbrella for everything, or install individual packages for targeted use.
+
+### Added
+
+- **Bar #15 coverage floor:** all 9 publishable packages clear ≥75% line and ≥75% branch. Workspace total: **1173 tests passing**, 2 skipped, 0 failing.
+
+  | Package | Line% | Branch% |
+  |---------|-------|---------|
+  | compressor | 95.11 | 79.00 |
+  | core | 89.13 | 86.56 |
+  | fcp | 96.64 | 91.80 |
+  | iwork-docs | 100.00 | 100.00 |
+  | keynote | 99.10 | 90.37 |
+  | logic | 100.00 | 90.90 |
+  | motion | 91.55 | 86.24 |
+  | pixelmator | 98.71 | 85.53 |
+  | protocols | 85.10 | 81.21 |
+
+- **Per-package READMEs** — each of the 9 packages has a standalone README with install snippet, full tool table, examples, and recovery profile.
+- **Per-package ancillary files** — LICENSE, SECURITY.md, CHANGELOG.md ship inside every tarball.
+- **`codecov.yml`** — per-package Codecov flags with carryforward; workspace badge now reflects a real number.
+- **`publish.yml` rewrite** — 10-package dependency-ordered publish with npm provenance, scope-access preflight, registry-verify with retry loop (up to 60s per package for propagation lag).
+- **`ci.yml` paths fix** — stale `src/**` path replaced with `packages/**` + `apps/**` to trigger CI on any package source change.
+
+### Infrastructure
+
+- Workspace root is `"private": true` (publish.yml uses `--workspace=<name>` per package, not root publish).
+- Dependency order: `core` → 7 leaves → `protocols` → umbrella CLI.
+- TypeScript path aliases in `vitest.config.ts` resolve all `@creator-studio-os/*` imports to package source at test time — no build step required for the test suite.
+
+---
+
 ## [1.7.12] — 2026-05-06
 
 ### Changed (npm publish prep)
