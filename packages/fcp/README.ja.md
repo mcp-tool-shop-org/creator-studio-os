@@ -6,8 +6,7 @@
   <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="420">
 </p>
 
-# ```
-@creator-studio-os/fcp
+# @creator-studio-os/fcp
 
 > Final Cut Pro ツールセット for Creator Studio OS — FCPXML 1.14 の作成、DTD 検証、Final Cut Pro へのインポート、および AppleScript ライブラリの検査機能を提供します。
 

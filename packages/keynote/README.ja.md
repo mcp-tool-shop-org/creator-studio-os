@@ -6,8 +6,7 @@
   <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="420">
 </p>
 
-# ```text
-@creator-studio-os/keynote
+# @creator-studio-os/keynote
 
 > Keynoteツール：Creator Studio OS向け。スライドデッキの自動化、Markdownインポート、ストーリーボードからFCPXMLへの変換、およびマルチフォーマットエクスポートのための56種類のツールを提供します。
 

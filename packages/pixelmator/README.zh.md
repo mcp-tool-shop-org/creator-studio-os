@@ -6,8 +6,7 @@
   <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="420">
 </p>
 
-# ```text
-@creator-studio-os/pixelmator
+# @creator-studio-os/pixelmator
 
 > Pixelmator Pro 工具，适用于 Creator Studio OS，包括图层编辑、机器学习效果、品牌卡片合成以及多格式导出。
 

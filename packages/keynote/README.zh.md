@@ -6,8 +6,7 @@
   <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="420">
 </p>
 
-# ```text
-@creator-studio-os/keynote
+# @creator-studio-os/keynote
 
 > Keynote 工具，专为 Creator Studio OS 设计 — 56 个工具，用于幻灯片自动化、Markdown 导入、将故事板导出为 FCPXML 格式，以及支持多种格式的导出。
 

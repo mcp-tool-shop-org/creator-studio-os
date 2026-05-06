@@ -6,8 +6,7 @@
   <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="420">
 </p>
 
-# ```text
-@creator-studio-os/pixelmator
+# @creator-studio-os/pixelmator
 
 > Creator Studio OS用のPixelmator Proツール。レイヤー編集、機械学習（ML）によるエフェクト、ブランドカードの作成、および様々な形式でのエクスポート機能を提供します。
 
