@@ -39,8 +39,8 @@
     },
     {
       "id": "motion",
-      "title": "Motion Templates",
-      "subhead": "OZML mutation, no GUI",
+      "title": "OZML Edits",
+      "subhead": "No GUI required",
       "durationSeconds": 6,
       "notes": "Show motion_template_set_param updating live title text inside .motn files with no GUI. The parameter changes in real time in the Motion canvas."
     },
