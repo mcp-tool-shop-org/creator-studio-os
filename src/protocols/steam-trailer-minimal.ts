@@ -40,6 +40,7 @@ import type { ProtocolDef, ProtocolStep, RunProtocolOpts, ReplayManifest } from 
 export const STEP_NAMES = [
   "validate-project",
   "compose-brand-cards",
+  "render-scene-clips",
   "edit-motion-title",
   "resolve-fcp-params",
   "build-fcpxml",
@@ -284,7 +285,81 @@ end tell`;
   }
 
   // -------------------------------------------------------------------------
-  // Step 3: edit-motion-title
+  // Step 3: render-scene-clips
+  //
+  // Per-scene Motion render: clone .motn → set scene title via OZML edit →
+  // submit headless Compressor render → wait. Produces one .mov per scene.
+  //
+  // Skipped gracefully when project.motionTemplatePath is empty. In that case
+  // compressor-encode falls back to the Pixelmator PNG slideshow path.
+  // -------------------------------------------------------------------------
+
+  // Paths populated when per-scene clips are rendered; consumed by compressor-encode.
+  const sceneClipPaths: string[] = [];
+
+  {
+    const stepName = "render-scene-clips";
+    const iHash = inputHash(stepName);
+    if (isResumed(stepName, iHash, resumeManifest)) {
+      yield makeStep(stepName, "skipped", "resumed from manifest", 0);
+    } else {
+      const t = Date.now();
+      const sceneOutDir = join(projectOutDir, "scenes");
+
+      if (dryRun) {
+        await mkdir(sceneOutDir, { recursive: true });
+        for (const scene of project.scenes) {
+          const clipPath = join(sceneOutDir, `${scene.id}.mov`);
+          await writeFile(clipPath, Buffer.alloc(1));
+          sceneClipPaths.push(clipPath);
+        }
+        const detail = `dry-run: wrote ${sceneClipPaths.length} stub clip(s)`;
+        recordStep(stepName, iHash, "completed", detail, Date.now() - t);
+        yield makeStep(stepName, "completed", detail, Date.now() - t);
+      } else if (!project.motionTemplatePath) {
+        const detail = "skipped — no motionTemplatePath in project; compressor-encode will use Pixelmator PNG slideshow";
+        recordStep(stepName, iHash, "completed", detail, Date.now() - t);
+        yield makeStep(stepName, "completed", detail, Date.now() - t);
+      } else {
+        await mkdir(sceneOutDir, { recursive: true });
+        const { cloneTemplate } = await import("../apps/motion/ozml.js");
+        const { editText } = await import("../apps/motion/textEdit.js");
+        const { renderViaCompressor } = await import("../apps/motion/render.js");
+        const { waitFor } = await import("../apps/compressor/monitor.js");
+        const cfg = loadConfig();
+        const primaryKey = Object.keys(project.deliverables)[0] ?? "main";
+        const deliverable = project.deliverables[primaryKey]!;
+        const settingPath = resolveBundledPreset(
+          cfg.compressorBundledSettingsDir,
+          deliverable.codec,
+          deliverable.resolution,
+        );
+        const rendered: string[] = [];
+        for (const scene of project.scenes) {
+          const clonedMotnPath = join(sceneOutDir, `${scene.id}.motn`);
+          const clipPath = join(sceneOutDir, `${scene.id}.mov`);
+          await cloneTemplate(project.motionTemplatePath, clonedMotnPath);
+          await editText(clonedMotnPath, scene.title);
+          const { jobId } = await renderViaCompressor({
+            motnPath: clonedMotnPath,
+            settingPath,
+            locationPath: clipPath,
+            batchName: `csos-${project.slug}-${scene.id}`,
+          });
+          await waitFor({ jobId, untilStatus: "completed", timeoutSec: 120 });
+          sceneClipPaths.push(clipPath);
+          rendered.push(scene.id);
+        }
+        const durationMs = Date.now() - t;
+        const detail = `rendered ${rendered.length} scene clip(s) via Motion+Compressor: ${rendered.join(", ")}`;
+        recordStep(stepName, iHash, "completed", detail, durationMs);
+        yield makeStep(stepName, "completed", detail, durationMs);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Step 4: edit-motion-title
   // -------------------------------------------------------------------------
   {
     const stepName = "edit-motion-title";
@@ -574,52 +649,67 @@ end tell`;
         detail = `dry-run: would encode ${fcpxmlPath} → ${basename(outputMovPath)} (codec=${deliverable.codec})`;
       } else {
         try {
-          // v1.7.0: build a slideshow MOV from brand cards via ffmpeg, then hand
-          // off to Compressor. Compressor CLI requires a media file — FCPXML is not
-          // a valid jobPath. TODO v1.8: replace with FCP Share → Compressor path
-          // once an "export from FCP" step is wired into the protocol.
+          // Build a source MOV via ffmpeg, then hand off to Compressor.
+          // Compressor CLI requires a media file — FCPXML is not a valid jobPath.
+          // Source priority:
+          //   1. Per-scene Motion clips from render-scene-clips (v1.7.6+) — carries lower-third text
+          //   2. Pixelmator PNG slideshow (cardsAreReal) — carries brand colors + scene title text
+          //   3. lavfi solid-color fill — last-resort stub when Pixelmator unavailable
           const { execFile } = await import("node:child_process");
           const { promisify } = await import("node:util");
           const execFileAsync = promisify(execFile);
 
           const slideshowPath = join(projectOutDir, `${project.slug}-src.mov`);
           const { width, height } = fcpParams.resolution;
-
-          // Check whether brand cards are real images (>100 bytes) or stubs from
-          // a failed Pixelmator call. If stubs, fall back to a lavfi solid-color
-          // source so ffmpeg gets valid input regardless.
-          const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
-            .then((s) => s.size)
-            .catch(() => 0);
-          const cardsAreReal = firstCardSize > 100;
-
           const ffArgs: string[] = ["-y", "-loglevel", "error"]; // suppress progress
 
-          if (cardsAreReal) {
-            for (const sc of fcpParams.scenes) {
-              ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
+          const firstClipSize = sceneClipPaths.length > 0
+            ? await stat(sceneClipPaths[0]!).then((s) => s.size).catch(() => 0)
+            : 0;
+          const clipsAreReal = firstClipSize > 100;
+
+          if (clipsAreReal && sceneClipPaths.length === fcpParams.scenes.length) {
+            // Path 1: concat per-scene Motion-rendered .mov clips
+            for (const clipPath of sceneClipPaths) {
+              ffArgs.push("-i", clipPath);
             }
-            const filterParts = fcpParams.scenes.map(
-              (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
-            );
+            const n = sceneClipPaths.length;
             const concatFilter =
-              filterParts.join(";") +
-              ";" +
-              fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
-              `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
+              sceneClipPaths.map((_, i) => `[${i}:v]`).join("") +
+              `concat=n=${n}:v=1:a=0[out]`;
             ffArgs.push("-filter_complex", concatFilter, "-map", "[out]");
           } else {
-            // Brand cards are stubs — generate a solid-color fill from lavfi
-            const hex = project.brand.primaryColor.replace("#", "");
-            ffArgs.push(
-              "-f", "lavfi",
-              "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
-            );
+            // Path 2 or 3: PNG slideshow or lavfi fill
+            const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
+              .then((s) => s.size)
+              .catch(() => 0);
+            const cardsAreReal = firstCardSize > 100;
+
+            if (cardsAreReal) {
+              for (const sc of fcpParams.scenes) {
+                ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
+              }
+              const filterParts = fcpParams.scenes.map(
+                (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
+              );
+              const concatFilter =
+                filterParts.join(";") +
+                ";" +
+                fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
+                `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
+              ffArgs.push("-filter_complex", concatFilter, "-map", "[out]");
+            } else {
+              // Brand cards are stubs — generate a solid-color fill from lavfi
+              const hex = project.brand.primaryColor.replace("#", "");
+              ffArgs.push(
+                "-f", "lavfi",
+                "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
+              );
+            }
           }
 
           ffArgs.push("-c:v", "prores_ks", slideshowPath);
           await execFileAsync("ffmpeg", ffArgs, { maxBuffer: 10 * 1024 * 1024 });
-          await execFileAsync("ffmpeg", ffArgs);
 
           // Resolve bundled preset by codec + resolution
           const cfg = loadConfig();
