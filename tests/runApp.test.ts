@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runApp, type TranscriptEntry } from "../src/runners/runApp.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { runApp, type TranscriptEntry, CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 let origOsascript: string | undefined;

@@ -1,0 +1,41 @@
+{
+  "name": "@creator-studio-os/creator-studio-os",
+  "version": "2.0.0",
+  "description": "MCP control plane for Apple Creator Studio apps — 8 apps, cross-app protocols, CLI and MCP server",
+  "keywords": ["mcp", "model-context-protocol", "final-cut-pro", "fcpxml", "applescript", "video-editing", "creator-studio", "compressor", "logic-pro", "automation", "apple", "macos"],
+  "license": "MIT",
+  "author": "mcp-tool-shop <64996768+mcp-tool-shop@users.noreply.github.com>",
+  "homepage": "https://github.com/mcp-tool-shop-org/creator-studio-os",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcp-tool-shop-org/creator-studio-os.git",
+    "directory": "apps/creator-studio-os"
+  },
+  "bugs": { "url": "https://github.com/mcp-tool-shop-org/creator-studio-os/issues" },
+  "type": "module",
+  "main": "./dist/server.js",
+  "bin": { "creator-studio-os": "./dist/cli.js" },
+  "files": ["dist", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md"],
+  "engines": { "node": ">=20.0.0" },
+  "os": ["darwin"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@creator-studio-os/core": "2.0.0",
+    "@creator-studio-os/fcp": "2.0.0",
+    "@creator-studio-os/compressor": "2.0.0",
+    "@creator-studio-os/motion": "2.0.0",
+    "@creator-studio-os/pixelmator": "2.0.0",
+    "@creator-studio-os/logic": "2.0.0",
+    "@creator-studio-os/keynote": "2.0.0",
+    "@creator-studio-os/iwork-docs": "2.0.0",
+    "@creator-studio-os/protocols": "2.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "fast-xml-parser": "^5.7.3",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.7.0" }
+}

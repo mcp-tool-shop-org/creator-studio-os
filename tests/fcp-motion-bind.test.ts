@@ -2,9 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readPublishedParams, buildParamBinding } from "../src/apps/fcp/motion-bind.js";
-import { buildProjectFcpxml } from "../src/fcpxml/builder.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { readPublishedParams, buildParamBinding, buildProjectFcpxml } from "@creator-studio-os/fcp";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 

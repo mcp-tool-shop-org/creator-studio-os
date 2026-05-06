@@ -2,7 +2,7 @@
  * withDaemonRecovery — unit tests.
  */
 import { describe, it, expect, vi } from "vitest";
-import { withDaemonRecovery, type RecoveryProfile } from "../src/runners/withDaemonRecovery.js";
+import { withDaemonRecovery, type RecoveryProfile } from "@creator-studio-os/core";
 
 function makeProfile(opts?: Partial<RecoveryProfile>): RecoveryProfile & { recoverCalled: boolean } {
   let recoverCalled = false;

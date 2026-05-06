@@ -3,7 +3,7 @@
  * Tests FCPXML generation from slide data without needing a running Keynote instance.
  */
 import { describe, it, expect } from "vitest";
-import { buildProjectFcpxml } from "../src/fcpxml/builder.js";
+import { buildProjectFcpxml } from "@creator-studio-os/fcp";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

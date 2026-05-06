@@ -6,12 +6,16 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../src/config.js", () => ({
-  loadConfig: () => ({
-    pixelmatorBundleId: "com.apple.pixelmator",
-    dataDir: "/fake/datadir",
-  }),
-}));
+vi.mock("@creator-studio-os/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@creator-studio-os/core")>();
+  return {
+    ...actual,
+    loadConfig: () => ({
+      pixelmatorBundleId: "com.apple.pixelmator",
+      dataDir: "/fake/datadir",
+    }),
+  };
+});
 
 // Mock fs/promises: access always resolves (files exist), mkdir is a no-op
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -23,9 +27,10 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
-// Mock document operations
-vi.mock("../src/apps/pixelmator/document.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/apps/pixelmator/document.js")>();
+// brandCard.ts imports from these sub-modules via relative paths — must mock them
+// directly so the intercepted functions are what composeBrandCard actually calls.
+vi.mock("../packages/pixelmator/src/document.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../packages/pixelmator/src/document.js")>();
   return {
     ...actual,
     openDocument: vi.fn().mockResolvedValue({ name: "card-template" }),
@@ -36,15 +41,18 @@ vi.mock("../src/apps/pixelmator/document.js", async (importOriginal) => {
   };
 });
 
-// Mock detect operations used for text/image replacement
-vi.mock("../src/apps/pixelmator/detect.js", () => ({
-  replaceText: vi.fn().mockResolvedValue({ replaced: true }),
-  replaceLayerImage: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock("../packages/pixelmator/src/detect.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../packages/pixelmator/src/detect.js")>();
+  return {
+    ...actual,
+    replaceText: vi.fn().mockResolvedValue({ replaced: true }),
+    replaceLayerImage: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
-import { composeBrandCard } from "../src/apps/pixelmator/brandCard.js";
-import { openDocument, closeDocument, exportDocument, resizeDocument, exportHdr } from "../src/apps/pixelmator/document.js";
-import { replaceText, replaceLayerImage } from "../src/apps/pixelmator/detect.js";
+import { composeBrandCard } from "@creator-studio-os/pixelmator";
+import { openDocument, closeDocument, exportDocument, resizeDocument, exportHdr } from "../packages/pixelmator/src/document.js";
+import { replaceText, replaceLayerImage } from "../packages/pixelmator/src/detect.js";
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { appendLedger, withLedger, type LedgerEntry } from "../src/ledger/index.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { appendLedger, withLedger, type LedgerEntry, CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 let origDataDir: string | undefined;

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
-import { listCompressorSettings } from "../src/apps/compressor/settings.js";
+import { listCompressorSettings } from "@creator-studio-os/compressor";
 
 const realHomeUserDir = join(
   homedir(),

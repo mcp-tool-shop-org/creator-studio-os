@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setPublishMarker, publishToFcp } from "../src/apps/motion/publish.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { setPublishMarker, publishToFcp } from "@creator-studio-os/motion";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 

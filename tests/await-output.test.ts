@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { awaitOutputFile } from "../src/runners/awaitOutput.js";
+import { awaitOutputFile } from "@creator-studio-os/core";
 
 let tmpDir: string;
 

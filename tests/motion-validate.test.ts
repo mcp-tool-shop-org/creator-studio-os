@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { validateTemplate } from "../src/apps/motion/validate.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { validateTemplate } from "@creator-studio-os/motion";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 

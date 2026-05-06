@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { editText, patchSiblingText } from "../src/apps/motion/textEdit.js";
+import { editText, patchSiblingText } from "@creator-studio-os/motion";
 
 // ---------------------------------------------------------------------------
 // Fixture helpers

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inspectSetting, getCodecAvailability } from "../src/apps/compressor/inspect.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { inspectSetting, getCodecAvailability } from "@creator-studio-os/compressor";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 let origCompressor: string | undefined;

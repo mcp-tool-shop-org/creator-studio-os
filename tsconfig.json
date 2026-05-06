@@ -1,21 +1,22 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "lib": ["ES2022"],
-    "types": ["node"]
+    "noEmit": true,
+    "paths": {
+      "@creator-studio-os/core": ["./packages/core/src/index.ts"],
+      "@creator-studio-os/fcp": ["./packages/fcp/src/index.ts"],
+      "@creator-studio-os/compressor": ["./packages/compressor/src/index.ts"],
+      "@creator-studio-os/motion": ["./packages/motion/src/index.ts"],
+      "@creator-studio-os/pixelmator": ["./packages/pixelmator/src/index.ts"],
+      "@creator-studio-os/logic": ["./packages/logic/src/index.ts"],
+      "@creator-studio-os/keynote": ["./packages/keynote/src/index.ts"],
+      "@creator-studio-os/iwork-docs": ["./packages/iwork-docs/src/index.ts"],
+      "@creator-studio-os/protocols": ["./packages/protocols/src/index.ts"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": [
+    "packages/*/src/**/*",
+    "apps/*/src/**/*"
+  ],
+  "exclude": ["node_modules", "packages/*/dist", "apps/*/dist", "tests"]
 }

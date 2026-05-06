@@ -1,0 +1,28 @@
+{
+  "name": "@creator-studio-os/keynote",
+  "version": "2.0.0",
+  "description": "Keynote tools for Creator Studio OS — 56 tools for slide deck automation, markdown import, storyboard-to-FCPXML, and multi-format export",
+  "keywords": ["mcp", "model-context-protocol", "keynote", "apple", "macos", "presentation"],
+  "license": "MIT",
+  "author": "mcp-tool-shop <64996768+mcp-tool-shop@users.noreply.github.com>",
+  "homepage": "https://github.com/mcp-tool-shop-org/creator-studio-os",
+  "repository": { "type": "git", "url": "git+https://github.com/mcp-tool-shop-org/creator-studio-os.git", "directory": "packages/keynote" },
+  "bugs": { "url": "https://github.com/mcp-tool-shop-org/creator-studio-os/issues" },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "files": ["dist", "README.md", "LICENSE", "SECURITY.md", "CHANGELOG.md"],
+  "engines": { "node": ">=20.0.0" },
+  "os": ["darwin"],
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "@creator-studio-os/core": "2.0.0",
+    "@creator-studio-os/compressor": "2.0.0",
+    "@creator-studio-os/fcp": "2.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "fast-xml-parser": "^5.7.3",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.7.0" }
+}

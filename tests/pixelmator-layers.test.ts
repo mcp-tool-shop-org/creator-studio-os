@@ -8,7 +8,7 @@
  * All tests mock runAppleScript so no live Pixelmator is required.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { BLEND_MODES, colorToAS, to16bit } from "../src/apps/pixelmator/blendModes.js";
+import { BLEND_MODES, colorToAS, to16bit } from "@creator-studio-os/pixelmator";
 
 // ── blendModes helpers ────────────────────────────────────────────────────────
 
@@ -74,20 +74,17 @@ describe("colorToAS", () => {
 // We mock the applescript runner so we can inspect the generated scripts
 // without needing a real Pixelmator instance.
 
-vi.mock("../src/runners/applescript.js", () => ({
+vi.mock("@creator-studio-os/core", () => ({
   runAppleScript: vi.fn().mockResolvedValue("MockLayer"),
   escapeAppleScriptString: (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"'),
-}));
-
-vi.mock("../src/config.js", () => ({
   loadConfig: () => ({
     pixelmatorBundleId: "com.apple.pixelmator",
   }),
 }));
 
-import { runAppleScript } from "../src/runners/applescript.js";
+import { runAppleScript } from "@creator-studio-os/core";
 import { makeLayer, makeShape, setLayerProperties, setLayerOrder,
-         groupLayers, ungroupLayer, setLayerText } from "../src/apps/pixelmator/layers.js";
+         groupLayers, ungroupLayer, setLayerText } from "@creator-studio-os/pixelmator";
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -3,7 +3,7 @@ import {
   frameDurationAttr,
   secondsToTime,
   frameDurationSeconds,
-} from "../src/fcpxml/time.js";
+} from "@creator-studio-os/fcp";
 
 describe("frameDurationAttr", () => {
   it("emits the standard frame durations FCP expects", () => {

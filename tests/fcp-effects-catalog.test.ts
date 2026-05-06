@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildEffectsCatalog, findEffect, type EffectCatalog } from "../src/apps/fcp/effects.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { buildEffectsCatalog, findEffect, type EffectCatalog } from "@creator-studio-os/fcp";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 

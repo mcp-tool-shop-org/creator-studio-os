@@ -7,20 +7,17 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../src/runners/applescript.js", () => ({
+vi.mock("@creator-studio-os/core", () => ({
   runAppleScript: vi.fn().mockResolvedValue(""),
   escapeAppleScriptString: (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"'),
-}));
-
-vi.mock("../src/config.js", () => ({
   loadConfig: () => ({ pixelmatorBundleId: "com.apple.pixelmator" }),
 }));
 
-import { runAppleScript } from "../src/runners/applescript.js";
+import { runAppleScript } from "@creator-studio-os/core";
 import {
   HDR_FORMATS, VIDEO_FORMATS, ANIMATED_FORMATS, WEB_FORMATS,
   exportHdr, exportVideo, exportAnimated, exportForWeb,
-} from "../src/apps/pixelmator/document.js";
+} from "@creator-studio-os/pixelmator";
 
 beforeEach(() => {
   vi.clearAllMocks();

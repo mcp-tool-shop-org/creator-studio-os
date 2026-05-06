@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { renderViaCompressor } from "../src/apps/motion/render.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { renderViaCompressor } from "@creator-studio-os/motion";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 let origBin: string | undefined;

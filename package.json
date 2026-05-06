@@ -1,70 +1,31 @@
 {
-  "name": "@creator-studio-os/creator-studio-os",
-  "version": "1.7.12",
-  "description": "MCP control plane for Apple Creator Studio apps. FCPXML-driven timeline authoring with canonical project directories.",
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "final-cut-pro",
-    "fcpxml",
-    "applescript",
-    "video-editing",
-    "creator-studio",
-    "compressor",
-    "logic-pro",
-    "automation"
+  "name": "creator-studio-os-workspace",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Workspace root — npm workspaces for @creator-studio-os/* packages",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
   ],
-  "license": "MIT",
-  "author": "mcp-tool-shop <64996768+mcp-tool-shop@users.noreply.github.com>",
-  "homepage": "https://github.com/mcp-tool-shop-org/creator-studio-os",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/mcp-tool-shop-org/creator-studio-os.git"
-  },
-  "bugs": {
-    "url": "https://github.com/mcp-tool-shop-org/creator-studio-os/issues"
-  },
   "type": "module",
-  "main": "dist/server.js",
-  "bin": {
-    "creator-studio-os": "dist/cli.js"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "SECURITY.md",
-    "CHANGELOG.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "os": [
-    "darwin"
-  ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/server.js",
+    "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "verify": "node dist/cli.js verify",
-    "smoke": "node dist/cli.js smoke",
-    "smoke:ci": "node dist/cli.js smoke --ci",
-    "smoke:dry": "node dist/cli.js smoke --dry-run",
-    "smoke:fixtures": "bash tests/fixtures/make-fixtures.sh",
-    "prepublishOnly": "npm run build && npm test"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "fast-xml-parser": "^5.7.3",
-    "zod": "^3.25.0"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "node apps/creator-studio-os/dist/cli.js verify",
+    "smoke": "node apps/creator-studio-os/dist/cli.js smoke",
+    "smoke:ci": "node apps/creator-studio-os/dist/cli.js smoke --ci",
+    "smoke:dry": "node apps/creator-studio-os/dist/cli.js smoke --dry-run",
+    "smoke:fixtures": "bash tests/fixtures/make-fixtures.sh"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

@@ -10,10 +10,8 @@ import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { runProtocol, listProtocols, describeProtocol } from "../src/protocols/index.js";
-import { STEP_NAMES } from "../src/protocols/steam-trailer-minimal.js";
-import type { ReplayManifest } from "../src/protocols/types.js";
-import { ProjectV2Schema } from "../src/projects/types.js";
+import { runProtocol, listProtocols, describeProtocol, STEP_NAMES, type ReplayManifest } from "@creator-studio-os/protocols";
+import { ProjectV2Schema } from "@creator-studio-os/core";
 import { writeFile } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
 

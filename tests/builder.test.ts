@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildProjectFcpxml } from "../src/fcpxml/builder.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { buildProjectFcpxml } from "@creator-studio-os/fcp";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 describe("buildProjectFcpxml", () => {
   it("builds a minimal valid-shape document with no clips", () => {

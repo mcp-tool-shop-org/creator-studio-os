@@ -6,8 +6,8 @@ import {
   resolveProject,
   createProject,
   listProjects,
-} from "../src/projects/resolve.js";
-import { CreatorStudioError } from "../src/errors.js";
+  CreatorStudioError,
+} from "@creator-studio-os/core";
 
 let tmp: string;
 

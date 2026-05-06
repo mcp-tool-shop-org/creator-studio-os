@@ -6,7 +6,7 @@ import {
   inspectTemplate,
   setParam,
   cloneTemplate,
-} from "../src/apps/motion/ozml.js";
+} from "@creator-studio-os/motion";
 
 const SAMPLE_MOTN = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE ozxmlscene>

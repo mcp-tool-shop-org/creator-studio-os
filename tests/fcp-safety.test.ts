@@ -4,9 +4,9 @@ import {
   lintCaptions,
   checkAnchorSafety,
   runSafetyPreflights,
-} from "../src/apps/fcp/safety.js";
-import { CreatorStudioError } from "../src/errors.js";
-import type { ProjectSpec } from "../src/fcpxml/types.js";
+  type ProjectSpec,
+} from "@creator-studio-os/fcp";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 // ─── Minimal spec builder ─────────────────────────────────────────────────────
 

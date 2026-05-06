@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { readLedger, parseSince, formatLedger } from "../src/ledger/reader.js";
+import { readLedger, parseSince, formatLedger } from "@creator-studio-os/core";
 
 let tmpDir: string;
 

@@ -3,7 +3,7 @@
  * Pure-function tests — no external app calls required.
  */
 import { describe, it, expect } from "vitest";
-import { ProjectV2Schema } from "../src/projects/types.js";
+import { ProjectV2Schema } from "@creator-studio-os/core";
 
 // ---------------------------------------------------------------------------
 // ProjectV2Schema

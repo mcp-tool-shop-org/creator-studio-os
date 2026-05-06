@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EXPORT_FORMAT_LIST } from "../src/apps/pixelmator/document.js";
+import { EXPORT_FORMAT_LIST } from "@creator-studio-os/pixelmator";
 
 describe("Pixelmator export formats", () => {
   it("exposes the verified format list from the sdef", () => {

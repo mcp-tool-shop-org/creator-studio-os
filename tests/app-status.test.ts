@@ -11,7 +11,7 @@ import {
   ALL_APP_NAMES,
   type AppName,
   type AppStatus,
-} from "../src/apps/status.js";
+} from "@creator-studio-os/core";
 
 function assertShape(s: AppStatus, app: AppName) {
   expect(s.app).toBe(app);

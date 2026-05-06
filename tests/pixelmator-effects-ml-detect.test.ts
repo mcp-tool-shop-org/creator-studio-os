@@ -4,7 +4,7 @@
  * Mocks runAppleScript so no live Pixelmator is needed.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { EFFECT_CLASSES, COLOR_ADJUSTMENT_PROPS } from "../src/apps/pixelmator/effects.js";
+import { EFFECT_CLASSES, COLOR_ADJUSTMENT_PROPS } from "@creator-studio-os/pixelmator";
 
 // ── Enum completeness ─────────────────────────────────────────────────────────
 
@@ -39,22 +39,16 @@ describe("COLOR_ADJUSTMENT_PROPS", () => {
 
 // ── AppleScript generation (mocked) ──────────────────────────────────────────
 
-vi.mock("../src/runners/applescript.js", () => ({
+vi.mock("@creator-studio-os/core", () => ({
   runAppleScript: vi.fn().mockResolvedValue(""),
   escapeAppleScriptString: (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"'),
-}));
-
-vi.mock("../src/config.js", () => ({
   loadConfig: () => ({
     pixelmatorBundleId: "com.apple.pixelmator",
   }),
 }));
 
-import { runAppleScript } from "../src/runners/applescript.js";
-import { applyEffect, applyColorAdjustments } from "../src/apps/pixelmator/effects.js";
-import { setBlendMode, setLayerShadow, setLayerStroke } from "../src/apps/pixelmator/styles.js";
-import { detectInDocument, replaceText, replaceLayerImage } from "../src/apps/pixelmator/detect.js";
-import { ML_ALGORITHMS } from "../src/apps/pixelmator/ml.js";
+import { runAppleScript } from "@creator-studio-os/core";
+import { applyEffect, applyColorAdjustments, setBlendMode, setLayerShadow, setLayerStroke, detectInDocument, replaceText, replaceLayerImage, ML_ALGORITHMS } from "@creator-studio-os/pixelmator";
 
 beforeEach(() => {
   vi.clearAllMocks();

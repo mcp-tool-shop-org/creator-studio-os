@@ -7,8 +7,7 @@
  *  - Safety pre-flights for the new types
  */
 import { describe, it, expect } from "vitest";
-import { buildProjectFcpxml } from "../src/fcpxml/builder.js";
-import { validateCompoundSafety, lintCaptions, checkAnchorSafety } from "../src/apps/fcp/safety.js";
+import { buildProjectFcpxml, validateCompoundSafety, lintCaptions, checkAnchorSafety } from "@creator-studio-os/fcp";
 
 // ---------------------------------------------------------------------------
 // Shared base spec

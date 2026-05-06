@@ -3,7 +3,7 @@
  * Pure-function tests — no AppleScript required.
  */
 import { describe, it, expect } from "vitest";
-import { parseMarkdown, slidesToAppleScript } from "../src/apps/keynote/markdown.js";
+import { parseMarkdown, slidesToAppleScript } from "@creator-studio-os/keynote";
 
 // ─── parseMarkdown ────────────────────────────────────────────────────────────
 

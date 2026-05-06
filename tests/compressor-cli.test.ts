@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { encodeJob } from "../src/apps/compressor/cli.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { encodeJob } from "@creator-studio-os/compressor";
+import { CreatorStudioError } from "@creator-studio-os/core";
 
 let tmp: string;
 let originalBin: string | undefined;

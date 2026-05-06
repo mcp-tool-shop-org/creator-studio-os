@@ -10,8 +10,8 @@ import { describe, it, expect } from "vitest";
 // Re-export private helpers for testing by importing the module
 // (TypeScript keeps them in module scope; we test indirectly via exported functions)
 
-import { statusOnce, jobAction } from "../src/apps/compressor/monitor.js";
-import { CreatorStudioError } from "../src/errors.js";
+import { statusOnce, jobAction } from "@creator-studio-os/compressor";
+import { CreatorStudioError } from "@creator-studio-os/core";
 import { mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

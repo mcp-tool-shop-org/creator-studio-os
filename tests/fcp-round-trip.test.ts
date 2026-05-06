@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseFcpxml, parseFcpTime } from "../src/fcpxml/parser.js";
-import { diffTimelines } from "../src/fcpxml/diff.js";
-import { buildProjectFcpxml } from "../src/fcpxml/builder.js";
+import { parseFcpxml, parseFcpTime, diffTimelines, buildProjectFcpxml } from "@creator-studio-os/fcp";
 
 // ─── parseFcpTime ─────────────────────────────────────────────────────────────
 
