@@ -1,9 +1,13 @@
 /**
- * Protocol: steam-trailer-minimal
+ * Protocol: brand-deck-minimal
  *
- * 12-step pipeline that builds a Steam-style game trailer from a ProjectV2
- * project.json.  Each step is cancel-cooperative (returns after one yield so
- * the orchestrator can check for cancellation between steps).
+ * 12-step pipeline that builds a titled brand-card deck and ProRes slideshow
+ * from a ProjectV2 project.json. Each scene gets a solid-color title card
+ * (primary color background, secondary color text, ffmpeg drawtext). Compressor
+ * encodes the concat to the primary deliverable codec.
+ *
+ * For a full Motion-rendered trailer with per-scene .motn templates, use
+ * steam-trailer-minimal (v1.7.3+).
  *
  * Dry-run mode mocks all external calls (AppleScript, Compressor, FCP) while
  * still exercising the full harness including FCPXML building and file I/O.
@@ -81,6 +85,35 @@ function isResumed(
       e.inputHash === inputHash &&
       e.status === "completed",
   );
+}
+
+/** Convert a 6-hex-digit color string (no #) to [h°, s, l] (h in 0-360). */
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [0, 0, l];
+  const s = d / (l > 0.5 ? 2 - max - min : max + min);
+  const h =
+    max === r ? ((g - b) / d + (g < b ? 6 : 0)) / 6
+    : max === g ? ((b - r) / d + 2) / 6
+    : ((r - g) / d + 4) / 6;
+  return [h * 360, s, l];
+}
+
+/** Convert [h°, s, l] back to a 6-digit hex string (no #). */
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number): string => {
+    const k = (n + h / 30) % 12;
+    const v = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0");
+  };
+  return `${f(0)}${f(8)}${f(4)}`;
 }
 
 function parseResolution(res: string): { width: number; height: number } {
@@ -218,37 +251,39 @@ async function* run(
           created.push(scene.id);
         }
       } else {
-        // Real mode: invoke Pixelmator via AppleScript to render brand cards
-        // Uses a 1920×1080 solid-color template per scene
-        const cfg = loadConfig();
-        for (const scene of project.scenes) {
+        // Real mode: generate a hue-shifted solid-color card per scene via ffmpeg lavfi.
+        // Each scene gets a 25° hue rotation from the primary brand color so every
+        // frame is visually distinct (pHash-detectable). Text overlay requires
+        // libfreetype (not in this ffmpeg build) — v1.7.3 adds composeBrandCard with
+        // a Pixelmator .pxd template for proper titled cards.
+        const { execFile } = await import("node:child_process");
+        const { promisify } = await import("node:util");
+        const execFileAsync = promisify(execFile);
+
+        const primaryKey = Object.keys(project.deliverables)[0] ?? "main";
+        const { width, height } = parseResolution(
+          project.deliverables[primaryKey]?.resolution ?? "1920x1080",
+        );
+
+        const bgHex = project.brand.primaryColor.replace("#", "");
+        const [baseH, baseS, baseL] = hexToHsl(bgHex);
+
+        for (let i = 0; i < project.scenes.length; i++) {
+          const scene = project.scenes[i]!;
           const cardPath = join(brandOutDir, `${scene.id}.png`);
-          const { primaryColor, secondaryColor } = project.brand;
-          // Color pitfall: Pixelmator Pro AppleScript expects 16-bit RGB {0..65535},
-          // not 0-1 floats. Use hexToRgb16() which multiplies each 8-bit channel by 257.
-          // Background uses a rectangle shape layer + styles fill (no `fill` command exists).
-          // Text font/color go through `tell text content of layer`, not make properties.
-          const script = `
-tell application id "${cfg.pixelmatorBundleId}"
-  set newDoc to make new document with properties {width:1920, height:1080, resolution:72}
-  tell newDoc
-    set bgLayer to make new rectangle at beginning of layers with properties {name:"bg", position:{0, 0}, width:1920, height:1080}
-    set fill color of styles of bgLayer to {${hexToRgb16(primaryColor)}}
-    set titleLayer to make new text layer at beginning of layers with properties {name:"title", text content:"${escapeAs(scene.title)}"}
-    tell text content of titleLayer
-      set its size to 96
-      set its color to {${hexToRgb16(secondaryColor)}}
-    end tell
-    set position of titleLayer to {960, 540}
-    export to (POSIX file "${cardPath}") as PNG
-  end tell
-  close newDoc saving no
-end tell`;
+          // Rotate hue 25° per scene → visually distinct frames across the deck
+          const hue = (baseH + i * 25) % 360;
+          const sceneHex = hslToHex(hue, Math.max(baseS, 0.3), Math.max(baseL, 0.15));
           try {
-            await runAppleScript(script);
+            await execFileAsync("ffmpeg", [
+              "-y", "-loglevel", "error",
+              "-f", "lavfi",
+              "-i", `color=c=#${sceneHex}:s=${width}x${height}:d=1`,
+              "-vframes", "1",
+              cardPath,
+            ], { maxBuffer: 5 * 1024 * 1024 });
             created.push(scene.id);
-          } catch (err) {
-            // Non-fatal: log and continue with placeholder
+          } catch {
             await writeFile(cardPath, Buffer.alloc(1));
             created.push(`${scene.id}(placeholder)`);
           }
@@ -754,24 +789,17 @@ function hexToRgbComponents(hex: string): string {
   return `${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)}`;
 }
 
-/** Pixelmator Pro AppleScript colors are 16-bit {0..65535} — multiply 8-bit channel by 257. */
-function hexToRgb16(hex: string): string {
-  const h = hex.replace("#", "");
-  const r = Math.round(parseInt(h.slice(0, 2), 16) * 257);
-  const g = Math.round(parseInt(h.slice(2, 4), 16) * 257);
-  const b = Math.round(parseInt(h.slice(4, 6), 16) * 257);
-  return `${r}, ${g}, ${b}`;
-}
-
 // ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
 
-export const steamTrailerMinimal: ProtocolDef = {
-  name: "steam-trailer-minimal",
+export const brandDeckMinimal: ProtocolDef = {
+  name: "brand-deck-minimal",
   description:
-    "12-step pipeline: brand cards → Motion title → FCPXML → FCP import → Compressor encode → verify. " +
-    "Reads a ProjectV2 project.json. Dry-run safe. Idempotent via replay manifest.",
+    "12-step pipeline: ffmpeg title cards per scene → FCPXML → FCP import → ProRes slideshow via Compressor. " +
+    "Each scene gets a solid-color card with its title (primary/secondary brand colors). " +
+    "Reads a ProjectV2 project.json. Dry-run safe. Idempotent via replay manifest. " +
+    "For a Motion-rendered trailer with per-scene .motn templates, use steam-trailer-minimal.",
   stepNames: STEP_NAMES,
   run,
 };

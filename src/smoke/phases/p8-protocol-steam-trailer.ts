@@ -19,7 +19,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runProtocol } from "../../protocols/index.js";
 import { appendLedger } from "../../ledger/index.js";
-import { STEP_NAMES } from "../../protocols/steam-trailer-minimal.js";
+import { STEP_NAMES } from "../../protocols/brand-deck-minimal.js";
 import type { PhaseResult } from "../report.js";
 import type { SmokeOpts } from "../index.js";
 import type { ReplayManifest } from "../../protocols/types.js";
@@ -175,7 +175,7 @@ async function idempotencyGate(
   const resumeSteps: Array<{ stepName: string; status: string }> = [];
   try {
     for await (const step of runProtocol({
-      name: "steam-trailer-minimal",
+      name: "brand-deck-minimal",
       projectPath,
       dryRun,
       taskId: `${taskId}-resume`,
@@ -237,7 +237,7 @@ async function runPhase8Real(id: number, name: string, start: number): Promise<P
   const steps: Array<{ stepName: string; status: string }> = [];
   try {
     for await (const step of runProtocol({
-      name: "steam-trailer-minimal",
+      name: "brand-deck-minimal",
       projectPath: showcaseProjectPath,
       dryRun: false,
       taskId,
@@ -320,7 +320,7 @@ async function runPhase8DryRun(
   const steps: Array<{ stepName: string; status: string }> = [];
   try {
     for await (const step of runProtocol({
-      name: "steam-trailer-minimal",
+      name: "brand-deck-minimal",
       projectPath: fixtureProjectPath,
       dryRun: true,
       taskId,
@@ -393,14 +393,14 @@ export async function runPhase8(
   if (appsHealthy) {
     return runPhase8Real(
       id,
-      "Protocol: steam-trailer-minimal real render — showcase project, MOV assert, idempotency",
+      "Protocol: brand-deck-minimal real render — showcase project, MOV assert, idempotency",
       start,
     );
   }
 
   return runPhase8DryRun(
     id,
-    "Protocol: steam-trailer-minimal dry-run — 12 steps, manifest, idempotency",
+    "Protocol: brand-deck-minimal dry-run — 12 steps, manifest, idempotency",
     start,
     opts.smokeProjectDir,
   );

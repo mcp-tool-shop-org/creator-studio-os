@@ -19,6 +19,9 @@ import { ProjectV2Schema, type ProjectV2 } from "../projects/types.js";
 import { appendLedger } from "../ledger/index.js";
 import { CreatorStudioError } from "../errors.js";
 import type { ProtocolDef, ProtocolStep, RunProtocolOpts, ReplayManifest } from "./types.js";
+import { brandDeckMinimal } from "./brand-deck-minimal.js";
+// steam-trailer-minimal.ts kept for backward compat with v1.7.0 tests;
+// protocol registry entry renamed to brand-deck-minimal (honest scope).
 import { steamTrailerMinimal } from "./steam-trailer-minimal.js";
 
 // ---------------------------------------------------------------------------
@@ -26,6 +29,10 @@ import { steamTrailerMinimal } from "./steam-trailer-minimal.js";
 // ---------------------------------------------------------------------------
 
 const REGISTRY: Record<string, ProtocolDef> = {
+  // brand-deck-minimal: ffmpeg title-card slideshow → Compressor (honest scope)
+  "brand-deck-minimal": brandDeckMinimal,
+  // steam-trailer-minimal: legacy alias kept until v1.7.3 replaces it with the
+  // real Motion-render path. Points to the same implementation for now.
   "steam-trailer-minimal": steamTrailerMinimal,
 };
 
