@@ -8,7 +8,7 @@
  *   registerProtocolTools() — wires csos_protocol_run MCP task tool
  */
 import { readFile, mkdir, writeFile, access } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -137,7 +137,7 @@ export async function* runProtocol(
   }
 
   const project = await loadProjectV2(projectPath);
-  const projectOutDir = join(dirname(projectPath), "out");
+  const projectOutDir = resolve(dirname(projectPath), "out"); // must be absolute for external CLIs
   await mkdir(projectOutDir, { recursive: true });
 
   const taskId = opts.taskId ?? `cli-${Date.now()}`;

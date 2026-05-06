@@ -89,6 +89,36 @@ function parseResolution(res: string): { width: number; height: number } {
   return { width: w, height: h };
 }
 
+/**
+ * Resolve the best bundled Compressor preset for a given codec + resolution.
+ * Prefers user preset in <dataDir>/shared/presets/ if present, then falls
+ * back to a bundled .setting file shipped with Compressor.
+ *
+ * Bundled ProRes presets use the .setting extension; HEVC presets use
+ * .compressorsetting. Both are accepted by the Compressor CLI -settingpath flag.
+ */
+function resolveBundledPreset(settingsDir: string, codec: string, resolution: string): string {
+  const c = codec.toLowerCase().replace(/\s+/g, "");
+  const { height } = parseResolution(resolution);
+
+  if (c.includes("prores422") || c.startsWith("prores") && c.includes("422")) {
+    if (height >= 1080) return join(settingsDir, "ProRes 422 1080.setting");
+    if (height >= 720) return join(settingsDir, "ProRes 422 720p.setting");
+    return join(settingsDir, "ProRes 422 SD.setting");
+  }
+  if (c.includes("prores4444")) {
+    return join(settingsDir, "ProRes 422 1080.setting"); // closest bundled match
+  }
+  if (c.includes("hevc") || c.includes("h.265") || c.includes("h265")) {
+    return join(settingsDir, "EFBComputer_HEVC8.compressorsetting");
+  }
+  if (c.includes("h.264") || c.includes("h264") || c.includes("avc")) {
+    return join(settingsDir, "hd264DiscName.setting");
+  }
+  // Default fallback
+  return join(settingsDir, "EFBComputer_HEVC8.compressorsetting");
+}
+
 // ---------------------------------------------------------------------------
 // Protocol implementation
 // ---------------------------------------------------------------------------
@@ -513,18 +543,69 @@ end tell`;
         detail = `dry-run: would encode ${fcpxmlPath} → ${basename(outputMovPath)} (codec=${deliverable.codec})`;
       } else {
         try {
-          const { encodeJob } = await import("../apps/compressor/cli.js");
+          // v1.7.0: build a slideshow MOV from brand cards via ffmpeg, then hand
+          // off to Compressor. Compressor CLI requires a media file — FCPXML is not
+          // a valid jobPath. TODO v1.8: replace with FCP Share → Compressor path
+          // once an "export from FCP" step is wired into the protocol.
+          const { execFile } = await import("node:child_process");
+          const { promisify } = await import("node:util");
+          const execFileAsync = promisify(execFile);
+
+          const slideshowPath = join(projectOutDir, `${project.slug}-src.mov`);
+          const { width, height } = fcpParams.resolution;
+
+          // Check whether brand cards are real images (>100 bytes) or stubs from
+          // a failed Pixelmator call. If stubs, fall back to a lavfi solid-color
+          // source so ffmpeg gets valid input regardless.
+          const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
+            .then((s) => s.size)
+            .catch(() => 0);
+          const cardsAreReal = firstCardSize > 100;
+
+          const ffArgs: string[] = ["-y", "-loglevel", "error"]; // suppress progress
+
+          if (cardsAreReal) {
+            for (const sc of fcpParams.scenes) {
+              ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
+            }
+            const filterParts = fcpParams.scenes.map(
+              (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
+            );
+            const concatFilter =
+              filterParts.join(";") +
+              ";" +
+              fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
+              `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
+            ffArgs.push("-filter_complex", concatFilter, "-map", "[out]");
+          } else {
+            // Brand cards are stubs — generate a solid-color fill from lavfi
+            const hex = project.brand.primaryColor.replace("#", "");
+            ffArgs.push(
+              "-f", "lavfi",
+              "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
+            );
+          }
+
+          ffArgs.push("-c:v", "prores_ks", slideshowPath);
+          await execFileAsync("ffmpeg", ffArgs, { maxBuffer: 10 * 1024 * 1024 });
+          await execFileAsync("ffmpeg", ffArgs);
+
+          // Resolve bundled preset by codec + resolution
           const cfg = loadConfig();
-          // Look for a .compressorsetting file in shared/presets or project brand dir
-          const settingPath = join(cfg.dataDir, "shared", "presets", `${deliverable.codec.replace(/ /g, "-")}.compressorsetting`);
-          const locationPath = dirname(outputMovPath);
+          const settingPath = resolveBundledPreset(
+            cfg.compressorBundledSettingsDir,
+            deliverable.codec,
+            deliverable.resolution,
+          );
+
+          const { encodeJob } = await import("../apps/compressor/cli.js");
           const result = await encodeJob({
-            jobPath: fcpxmlPath,
+            jobPath: slideshowPath,
             settingPath,
-            locationPath,
+            locationPath: outputMovPath, // Compressor uses stem; replaces extension with codec's container
           });
           encodeJobId = result.jobId ?? null;
-          detail = `submitted encode job ${encodeJobId} for ${basename(outputMovPath)}`;
+          detail = `submitted encode job ${encodeJobId} → ${basename(outputMovPath)} (preset=${basename(settingPath)})`;
         } catch (err) {
           detail = `Compressor encode failed: ${err instanceof Error ? err.message : String(err)}`;
           recordStep(stepName, iHash, "failed", detail, Date.now() - t);

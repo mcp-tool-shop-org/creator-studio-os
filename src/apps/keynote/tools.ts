@@ -516,7 +516,7 @@ end tell`;
 
   server.tool(
     "keynote_reorder_slide",
-    "Move a slide to a new position in a Keynote document.",
+    "Move (reorder) a Keynote slide to a different position in the presentation. Specify the slide to move by index and the target position. To reposition or resize items within a slide, use keynote_position_item instead.",
     {
       name: z.string().describe("Document name"),
       slideIndex: z.number().int().min(1).describe("1-indexed slide number to move"),
@@ -1779,7 +1779,7 @@ end tell`;
 
   server.tool(
     "keynote_to_compressor_gif",
-    "Export a Keynote deck as an animated GIF by routing through Compressor. Exports a QuickTime movie first, then hands off to Compressor with a GIF preset.",
+    "Export a Keynote slideshow as an animated GIF via Compressor. Renders the presentation to a QuickTime movie first, then transcodes to animated GIF using a Compressor preset. For video export (MP4, MOV) without GIF conversion, use keynote_export_movie instead.",
     {
       documentName: z.string().describe("Name of the open Keynote document"),
       outputDir: z.string().describe("Directory for intermediate movie and final GIF"),

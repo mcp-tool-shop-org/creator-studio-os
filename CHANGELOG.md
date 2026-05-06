@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] — 2026-05-05
+
+### Fixed (smoke green — real-render path working)
+
+- **Phase 8 real-render path:** `runPhase8` now branches on Phase 0 app health — real ProRes encode via Compressor when all four apps are healthy, dry-run fallback otherwise. First confirmed end-to-end render: `csos-showcase-main.mov` (19 MB, 35s ProRes 422).
+- **Protocol `projectOutDir` absolute path:** `resolve()` added in `src/protocols/index.ts` so external CLIs (Compressor, ffmpeg) always receive absolute paths, not relative ones.
+- **Protocol step 9 real-mode encode:** Fixed three bugs — wrong preset path (`cfg.dataDir/shared/presets/` → `resolveBundledPreset` using bundled `compressorBundledSettingsDir`); wrong `jobPath` (FCPXML → ffmpeg slideshow from brand cards); wrong `locationPath` (`dirname(outputMovPath)` → `outputMovPath`). Added lavfi solid-color fallback when brand cards are stubs (Pixelmator AppleScript pending), `-loglevel error` flag, and 10 MB maxBuffer.
+- **Tool descriptions (Phase 7):** `csos_app_status` now surfaces for "Final Cut Pro healthy" and "Compressor queue depth" queries. `keynote_reorder_slide` surfaces for "move slide to different position". `keynote_to_compressor_gif` surfaces for "export slideshow as animated GIF". All 12 Phase 7 queries now pass.
+- **`.gitignore`:** Added `out/` and `demo/**/out/` — smoke reports and protocol render outputs are generated at runtime and should not be versioned.
+
+---
+
 ## [1.7.0] — 2026-05-05
 
 ### Added (Phase 2.4 — Keystone protocol v1.7.0)

@@ -127,8 +127,9 @@ export async function runSmoke(args: string[]): Promise<void> {
   phases.push(p7);
   printPhaseResult(p7);
 
-  // Phase 8 — protocol steam-trailer-minimal dry-run + idempotency gate
-  const p8 = await runPhase8(opts);
+  // Phase 8 — protocol steam-trailer-minimal: real render when apps are healthy,
+  // dry-run fixture otherwise.
+  const p8 = await runPhase8(opts, healthMap);
   phases.push(p8);
   printPhaseResult(p8);
 

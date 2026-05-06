@@ -33,7 +33,7 @@ const APP_NAMES: [AppName, ...AppName[]] = [
 export function registerStatusTool(server: McpServer) {
   server.tool(
     "csos_app_status",
-    "Check whether a Creator Studio app is running and healthy. Returns process state, version, front-document name, and (for Compressor) queue depth. Pass app=\"all\" to query all 8 apps at once.",
+    "Check whether a Creator Studio app (Final Cut Pro, Compressor, Motion, Logic, Pixelmator, Keynote, Pages, or Numbers) is running and healthy. Returns process state, version, front-document name, and — for Compressor — current encode queue depth (number of jobs queued or active). Pass app=\"all\" to query all 8 apps at once.",
     {
       app: z
         .enum([...APP_NAMES, "all"] as [AppName | "all", ...(AppName | "all")[]])
