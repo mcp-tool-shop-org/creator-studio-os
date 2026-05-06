@@ -7,10 +7,10 @@ This is the cross-app overview. Per-app depth lives in [`roadmap-fcp.md`](./road
 - **v1.0 → v1.5** (2026-05-04) — All 8 apps wired, Motion OZML 4.0 parameter mutation
 - **v1.6.x** (Phase 1 — 2026-05-05) — Cross-cutting infrastructure + cheap swarm-surfaced wins. Compressor monitor stream, Motion render-via-compressor, FCP round-trip diff, FCP effects catalog, Motion-FCP killer chain, ledger v1, unified `runApp` runner, tool-compass discoverability gate.
 - **v1.7.x** (Phase 2 — 2026-05-05/06) — Pixelmator full sdef (33 tools), Keynote 45-tool leapfrog (56 total), Motion text editor + sibling-layout patch (`patchSiblingText`), FCP anchored items / multicam / compound clips / captions, app-status infrastructure, **`protocol.brand-deck-minimal` keystone** running end-to-end against the bundled showcase demo with real-app smoke green and visible Motion lower-third overlays composited on Pixelmator brand cards.
+- **v2.0.0** (2026-05-06) — **Monorepo decomposition + first npm publish.** Single-package `@mcptoolshop/creator-studio-os` split into 10 published packages under [`@creator-studio-os`](https://www.npmjs.com/org/creator-studio-os). 153 tools, 1173 tests, ≥75% line + branch coverage on every publishable package, signed npm provenance attestations. Per-package READMEs + 7-language translation surface across all 11 READMEs (77 files). Codecov ingestion live at 79%.
+- **v2.0.1** (2026-05-06) — Doc-only release. Root README aligned to v2.0 reality (was rendering "v1.7.10 / 78 tools" on GitHub home + npm umbrella page). Translator-induced malformed H1 stripped from 5 ja+zh per-package files. Umbrella app translations added. Workflow actions bumped to `@v5` (Node 20 deprecation). Codecov v5 OIDC tokenless upload (replaces empty `CODECOV_TOKEN` token requirement).
 
-**Current state:** v1.7.10 — 78 MCP tools, 410 tests, 9/9 real-app smoke green including `movEyeballGate`. The killer chain is real: brand cards (Pixelmator) + per-scene Motion lower-thirds (OZML mutation + headless Compressor render) + composited final encode. csos's first shippable visual deliverable lives at `demo/csos-showcase/out/csos-showcase-main.mov`.
-
-**npm publish:** HELD. Director's gate. The Full Treatment is the path that moves it.
+**Current state:** v2.0.1 — 153 MCP tools, 1173 tests, 9/9 real-app smoke green including `movEyeballGate`, all 10 packages live on npm, GitHub Pages handbook deployed, codecov badge green at 79%. The killer chain is real: brand cards (Pixelmator) + per-scene Motion lower-thirds (OZML mutation + headless Compressor render) + composited final encode. csos's first shippable visual deliverable lives at `demo/csos-showcase/out/csos-showcase-main.mov`.
 
 ## Phase 3 — v1.8.x — Per-app depth completion
 
@@ -70,6 +70,18 @@ After protocols are live and the engine works against operator dogfood, the work
 - **Marketplace pattern.** Operators publish `@csos-community/<protocol-pack>` packages following a publishing convention (csos doesn't host a registry — npm is the registry). The convention doc ships in `docs/publishing-protocols.md`.
 - **GitHub Releases + auto-update channel.** csos shipped via npm + GitHub Releases. Auto-update channel for users who installed via Releases asset.
 
+## Phase 8 — v3.0.0 — Breaking-change migrations
+
+Reserved for breaking-change work that requires major-version coordination across all 10 packages. Bumping any of these to current is a v3.0 candidate, not a v2.x patch.
+
+- **Zod 3.25 → Zod 4 migration.** Dependabot proposed (PR #1, closed 2026-05-06 deferred). Three concrete code-migration sites surfaced in CI:
+  - `packages/core/src/projects/types.ts:90` — Zod 4's `.default({})` no longer accepts an empty object as a default for schemas with required fields. Need to provide proper defaults (`primaryColor`, `secondaryColor`) or restructure the schema.
+  - `packages/pixelmator/src/tools.ts:650` — method signature change ("Expected 2-3 arguments, but got 1"). Likely a `.parse()` / `.safeParse()` / `.shape` API change.
+  - `packages/pixelmator/src/tools.ts:654` — stricter inferred types. `Record<string | number | symbol, unknown>` no longer assignable to `Record<string, string | number | boolean>` — needs explicit narrowing.
+  - Plus runtime behavior changes: Zod 4 changed validation defaults (e.g., string parsing, optional handling). Need full smoke harness pass after the migration to catch behavior drift, not just typecheck pass.
+- **MCP SDK major bumps.** Currently `@modelcontextprotocol/sdk@^1.29`. Track the SDK's 2.x line whenever it lands — protocol-level changes go here.
+- **Node major bumps.** When Node 20 EOL in 2026 forces `engines.node` from `>=20` to `>=22`, that's a breaking promise to consumers — v3.0 territory.
+
 ## Out-of-scope (reaffirmed)
 
 - UI scripting as a default. Logic keystroke route stays rejected. FCP UI scripting only behind explicit `--allow-ui-scripting` opt-in.
@@ -81,6 +93,6 @@ After protocols are live and the engine works against operator dogfood, the work
 
 ## Total surface
 
-Today: 78 tools, 1 protocol. End of Phase 3: ~128 tools, 1 protocol. End of Phase 4: ~128 tools, 6 protocols. End of Phase 5: ~128 tools, 11 protocols + canon-bound integration. End of Phase 6: ~135 tools, 11 protocols + reverse-pipeline + Apple Intelligence enrichment. End of Phase 7: published, multi-machine, sustained.
+Today: **153 tools, 2 protocols, 10 packages live on npm.** End of Phase 3: ~203 tools, 2 protocols. End of Phase 4: ~203 tools, 7 protocols. End of Phase 5: ~203 tools, 12 protocols + canon-bound integration. End of Phase 6: ~210 tools, 12 protocols + reverse-pipeline + Apple Intelligence enrichment. End of Phase 7: multi-machine farm, marketplace pattern, sustained product. Phase 8 (v3.0) is breaking-change work — major-version coordinated migrations.
 
-Multi-quarter build, not a sprint. The Full Treatment Protocol earns the publish gate when v1.7.10's polish meets v1.8.0's depth — director's call on which side of Phase 3 the treatment lands.
+Multi-quarter build, not a sprint. v2.0.x is shipped — Phase 3 (per-app depth) is the next director's call.
