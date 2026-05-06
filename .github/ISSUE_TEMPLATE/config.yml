@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Handbook
+    url: https://mcp-tool-shop-org.github.io/creator-studio-os/handbook/
+    about: Read the handbook before filing — many questions are answered there.
+  - name: npm — @creator-studio-os
+    url: https://www.npmjs.com/org/creator-studio-os
+    about: Browse all 10 published packages.
+  - name: Security
+    url: https://github.com/mcp-tool-shop-org/creator-studio-os/security/policy
+    about: Found a vulnerability? Use private security advisories — see SECURITY.md.

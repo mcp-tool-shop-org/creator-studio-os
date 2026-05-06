@@ -2,7 +2,7 @@
 title: Protocols
 description: Cross-app composition protocols — brand-deck-minimal walkthrough, step-by-step.
 sidebar:
-  order: 6
+  order: 7
 ---
 
 ## What are protocols?
@@ -103,6 +103,6 @@ Re-running the protocol from the start is safe — steps that already produced o
 
 ## Adding a protocol
 
-Protocols live in `src/protocols/`. Each protocol is a TypeScript module that exports a `ProtocolDefinition` with a name, description, and ordered step array. Steps receive the project context and tool registry, and return structured results that the next step can consume.
+Protocols live in [`@creator-studio-os/protocols`](https://www.npmjs.com/package/@creator-studio-os/protocols) (`packages/protocols/src/`). Each protocol is a TypeScript module that exports a `ProtocolDefinition` with a name, description, and ordered step array. Steps receive the project context and tool registry, and return structured results that the next step can consume.
 
-See `src/protocols/brand-deck-minimal.ts` for the reference implementation.
+See `packages/protocols/src/brand-deck-minimal.ts` for the reference implementation.

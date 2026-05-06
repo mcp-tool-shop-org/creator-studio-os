@@ -26,25 +26,38 @@ The anti-pattern: writing summaries of what's already in the README or the code.
 - **No network calls in the runtime.** DTD validation reads the bundled DTD inside the FCP app. Anything that calls a remote service requires a design discussion first.
 - **Always reference apps by bundle ID** in AppleScript and `open` — not by app file name. The Creator Studio bundle renames `*.app` files but keeps stock bundle IDs.
 - **AppleScript strings must go through `escapeAppleScriptString`** before interpolation. We've documented the injection mitigation in `SECURITY.md` and `docs/threat-model.md`; don't break it.
-- **FCPXML attribute strings must go through `escapeXmlAttr`** in `src/fcpxml/builder.ts`.
-- **No raw stack traces in tool errors.** Use `CreatorStudioError` with a structured `{ code, message, hint }` shape. Add new codes to `src/errors.ts` if needed.
+- **FCPXML attribute strings must go through `escapeXmlAttr`** in `packages/fcp/src/fcpxml/builder.ts`.
+- **No raw stack traces in tool errors.** Use `CreatorStudioError` with a structured `{ code, message, hint }` shape. Add new codes to `packages/core/src/errors.ts` if needed.
+
+## Workspace layout (v2.0.0+)
+
+This is a 10-package npm workspace:
+
+- `apps/creator-studio-os/` — umbrella CLI (`@creator-studio-os/creator-studio-os`)
+- `packages/core/` — shared runtime (`@creator-studio-os/core`)
+- `packages/{fcp,compressor,motion,pixelmator,keynote,logic,iwork-docs}/` — per-app packages
+- `packages/protocols/` — cross-app pipelines
+
+Root `package.json` is `private: true` — workspace declaration only, never published.
 
 ## Data directory
 
-Default `/Volumes/T9-Shared/AI/creator-studio/`. Override via `CREATOR_STUDIO_DATA_DIR`. Schema: `projects/<name>/{footage,audio,images,brand,refs,fcp,out}/` plus `shared/{brand,presets}/`. The schema is enforced by `src/projects/resolve.ts`.
+Default `/Volumes/T9-Shared/AI/creator-studio/`. Override via `CREATOR_STUDIO_DATA_DIR`. Schema: `projects/<name>/{footage,audio,images,brand,refs,fcp,out}/` plus `shared/{brand,presets}/`. The resolver lives in `@creator-studio-os/core`.
 
 ## Test discipline
 
-- `npm test` must pass — 16+ tests, all in `tests/`.
-- `npm run typecheck` must pass.
+- `npm test` must pass — 1173+ tests across the workspace.
+- `npm run typecheck` must pass (uses workspace root tsconfig with path aliases).
+- **Per-package coverage floor: ≥75% line / ≥75% branch.** Non-negotiable. Codecov enforces via per-package flags.
+- Tests land in the same commit as the code they cover — never deferred to a "polish phase." Reference: `~/.claude/projects/-Volumes-T9-Shared-AI/memory/feedback_ship_criteria_floor.md`.
 - `creator-studio-os verify` must pass on the host that builds it.
 - The `verify` command's FCPXML round-trip via `xmllint` against the bundled DTD is the strongest local signal that the builder still produces valid output. Don't ship if it fails.
 
 ## Publish discipline
 
-- **HELD until the product is complete.** Mike's call, not yours.
-- **Target org when published: `@creator-studio-os` on npm**, NOT `@mcptoolshop`. The package.json currently reads `@mcptoolshop/creator-studio-os` from the initial scaffold — must be renamed before publish.
-- Use `npm publish --provenance` (already wired in `.github/workflows/publish.yml`).
+- **All 10 packages published** to the [`@creator-studio-os`](https://www.npmjs.com/org/creator-studio-os) npm scope as of v2.0.0 (2026-05-06). Coordinated via `.github/workflows/publish.yml`.
+- Future releases: bump all 10 `package.json` versions in lockstep, tag `vX.Y.Z`, create GitHub release. The publish workflow asserts version match across all manifests before the first publish.
+- All publishes use `--provenance` (OIDC `id-token: write`). Workflow has scope-access preflight + registry verify with retry (handles npm's 30-60s propagation lag).
 
 ## When making decisions
 

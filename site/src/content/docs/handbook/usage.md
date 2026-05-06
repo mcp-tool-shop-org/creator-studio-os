@@ -2,7 +2,7 @@
 title: Usage
 description: Run your first protocol, explore the CLI, and understand how to use Creator Studio OS tools from Claude.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 ## CLI commands
@@ -10,6 +10,7 @@ sidebar:
 ```bash
 creator-studio-os serve        # Start the MCP server (used by your MCP client)
 creator-studio-os verify       # Check your setup
+creator-studio-os smoke        # Run the 9-phase smoke harness
 creator-studio-os protocol run <name> --project <path>
 creator-studio-os protocol list
 creator-studio-os protocol describe <name>
@@ -39,7 +40,7 @@ See [Protocols](./protocols/) for the full `brand-deck-minimal` walkthrough.
 
 ## Using tools from Claude
 
-With the MCP server running, Claude can call any of the 78 tools directly. Examples:
+With the MCP server running, Claude can call any of the 153 tools directly. Examples:
 
 **Build and import an FCPXML timeline:**
 ```
@@ -84,7 +85,7 @@ Protocols operate on a `project.json` file in the `ProjectV2` schema:
 }
 ```
 
-Full schema: `src/projects/types.ts`. Demo: `demo/csos-showcase/project.json`.
+Full schema lives in `@creator-studio-os/core`. Demo: `demo/csos-showcase/project.json` in the source repo.
 
 ## Logging levels
 
@@ -107,4 +108,12 @@ npm run smoke:ci
 
 Phases: app health → Compressor encode → Motion clone+render → FCP round-trip diff → ledger → tool-compass discoverability (12 semantic queries) → protocol real-render with `movEyeballGate`.
 
-CI runs typecheck + build + unit tests on Linux. The smoke harness runs locally (macOS) because macOS runners cost ~10× Linux per CI minute.
+CI runs typecheck + build + unit tests on Linux for all 10 packages. The smoke harness runs locally on macOS — macOS GitHub Actions runners cost roughly 10× Linux per CI minute, so the integration tests stay on the dev machine.
+
+## Coverage
+
+Every package in the workspace clears a **75% line / 75% branch** floor. Total workspace coverage as of v2.0.0:
+
+- 1173 unit tests
+- All 9 publishable packages above floor
+- Per-package coverage tracked on [Codecov](https://codecov.io/gh/mcp-tool-shop-org/creator-studio-os) with carryforward flags

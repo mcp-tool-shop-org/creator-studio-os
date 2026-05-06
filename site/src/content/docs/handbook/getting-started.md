@@ -11,17 +11,38 @@ sidebar:
 - **Node.js ≥ 20**
 - The Apple apps you want to use (Final Cut Pro, Compressor, Motion, Pixelmator Pro, Logic Pro, Keynote, Pages, or Numbers)
 
-## Install
+## Install — full CLI
+
+The umbrella package ships the `creator-studio-os` binary, MCP server, verify command, smoke harness, and the entire 78-tool surface across all 10 packages:
 
 ```bash
-npm install -g @mcptoolshop/creator-studio-os
+npm install -g @creator-studio-os/creator-studio-os
 ```
 
 Or run without installing via npx:
 
 ```bash
-npx -y @mcptoolshop/creator-studio-os serve
+npx -y @creator-studio-os/creator-studio-os serve
 ```
+
+## Install — single app
+
+If you only need one app's tools (for example, you're embedding FCPXML authoring inside another tool), pull in only that package:
+
+```bash
+npm install @creator-studio-os/fcp           # Final Cut Pro
+npm install @creator-studio-os/motion        # Motion
+npm install @creator-studio-os/pixelmator    # Pixelmator Pro
+npm install @creator-studio-os/compressor    # Compressor
+npm install @creator-studio-os/keynote       # Keynote
+npm install @creator-studio-os/logic         # Logic Pro
+npm install @creator-studio-os/iwork-docs    # Pages + Numbers
+npm install @creator-studio-os/protocols     # Cross-app pipelines
+```
+
+All 10 packages are published under the [`@creator-studio-os`](https://www.npmjs.com/org/creator-studio-os) npm scope with signed provenance attestations.
+
+See [Packages](./packages/) for the full list with tool counts.
 
 ## Verify your setup
 
@@ -63,7 +84,7 @@ Via npx:
   "mcpServers": {
     "creator-studio-os": {
       "command": "npx",
-      "args": ["-y", "@mcptoolshop/creator-studio-os", "serve"]
+      "args": ["-y", "@creator-studio-os/creator-studio-os", "serve"]
     }
   }
 }
@@ -104,5 +125,6 @@ creator-studio/
 ## Next steps
 
 - [Usage](./usage/) — run your first protocol and explore the CLI
+- [Packages](./packages/) — browse the 10 npm packages
 - [Reference](./reference/) — browse all 78 tools
 - [Protocols](./protocols/) — deep dive into `brand-deck-minimal`

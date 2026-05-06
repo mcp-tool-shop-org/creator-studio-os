@@ -2,7 +2,7 @@
 title: Security
 description: Threat model, permissions, what Creator Studio OS does and doesn't touch.
 sidebar:
-  order: 5
+  order: 6
 ---
 
 ## What the server does
@@ -31,9 +31,9 @@ Grant or deny in **System Settings → Privacy & Security → Automation**. Deny
 
 **AppleScript injection** — all user-provided strings pass through `escapeAppleScriptString` before osascript interpolation. The escaping is tested and documented in `SECURITY.md`.
 
-**XML injection** — all FCPXML attribute strings pass through `escapeXmlAttr` in `src/fcpxml/builder.ts`.
+**XML injection** — all FCPXML attribute strings pass through `escapeXmlAttr` in `packages/fcp/src/fcpxml/builder.ts`.
 
-**Path traversal** — all project paths are resolved through `src/projects/resolve.ts`, which anchors to `CREATOR_STUDIO_DATA_DIR` and rejects `..` traversal.
+**Path traversal** — all project paths are resolved through the project resolver in `@creator-studio-os/core`, which anchors to `CREATOR_STUDIO_DATA_DIR` and rejects `..` traversal.
 
 ## Known moderate vulnerabilities
 

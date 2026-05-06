@@ -1,11 +1,14 @@
 ---
 title: Reference
-description: All 78 Creator Studio OS tools, grouped by app.
+description: All 153 Creator Studio OS tools, grouped by app.
 sidebar:
-  order: 3
+  order: 4
 ---
 
-## Final Cut Pro (22 tools)
+> Each app group below ships as its own npm package. Browse the family on
+> [npm](https://www.npmjs.com/org/creator-studio-os) or see [Packages](../packages/) for tool counts and install commands.
+
+## Final Cut Pro (22 tools) — `@creator-studio-os/fcp`
 
 FCP's AppleScript dictionary is read-only. Timeline authoring goes through FCPXML import.
 
@@ -35,9 +38,9 @@ FCP's AppleScript dictionary is read-only. Timeline authoring goes through FCPXM
 | `fcp_caption_build` | Build a caption track from a transcript |
 | `fcp_compound_clip_build` | Build a compound clip from nested spine specs |
 
-## Compressor (15 tools)
+## Compressor (15 tools) — `@creator-studio-os/compressor`
 
-Compressor has no AppleScript dictionary. The surface is its CLI plus `.compressorbatch` files. First invocation per session triggers App Store entitlement validation (expected delay).
+Compressor has no AppleScript dictionary. The surface is its CLI plus `.compressorbatch` files. First invocation per session triggers App Store entitlement validation (expected delay). See the [`@creator-studio-os/compressor` README on npm](https://www.npmjs.com/package/@creator-studio-os/compressor) for the canonical tool list.
 
 | Tool | Purpose |
 |------|---------|
@@ -56,7 +59,7 @@ Compressor has no AppleScript dictionary. The surface is its CLI plus `.compress
 | `compressor_await_output` | Block until an output file is non-empty |
 | `compressor_daemon_recover` | Recover a stuck Compressor daemon |
 
-## Motion (10 tools)
+## Motion (10 tools) — `@creator-studio-os/motion`
 
 `motion_template_set_param` and `motion_render_via_compressor` have no prior art in any MCP — headless Motion OZML mutation and render are uniquely enabled by creator-studio-os.
 
@@ -73,7 +76,9 @@ Compressor has no AppleScript dictionary. The surface is its CLI plus `.compress
 | `motion_publish_to_fcp` | Publish a Motion template to FCP's Title browser |
 | `motion_render_via_compressor` | Headlessly render a `.motn` to video via Compressor |
 
-## Pixelmator Pro (33 tools)
+## Pixelmator Pro (33 tools) — `@creator-studio-os/pixelmator`
+
+The Pixelmator surface covers the full sdef. The table below shows the most-used operations — see the [`@creator-studio-os/pixelmator` README on npm](https://www.npmjs.com/package/@creator-studio-os/pixelmator) for the complete 33-tool reference.
 
 | Tool | Purpose |
 |------|---------|
@@ -99,7 +104,7 @@ Compressor has no AppleScript dictionary. The surface is its CLI plus `.compress
 | `pixelmator_hdr_export` | Export with HDR tone mapping |
 | `pixelmator_text_card` | Render a text-only card with font + color control |
 
-## Logic Pro (3 tools)
+## Logic Pro (3 tools) — `@creator-studio-os/logic`
 
 Logic has no AppleScript dictionary. Surface: lifecycle + file-open handoff for `.logicx` projects.
 
@@ -109,7 +114,9 @@ Logic has no AppleScript dictionary. Surface: lifecycle + file-open handoff for 
 | `logic_app_running` | Check if Logic Pro is running |
 | `logic_open` | Open a `.logicx` project |
 
-## Keynote (8 tools)
+## Keynote (56 tools) — `@creator-studio-os/keynote`
+
+Keynote has the largest single-app surface. The table below shows the lifecycle and export highlights — see the [`@creator-studio-os/keynote` README on npm](https://www.npmjs.com/package/@creator-studio-os/keynote) for the full 56-tool reference.
 
 | Tool | Purpose |
 |------|---------|
@@ -120,7 +127,7 @@ Logic has no AppleScript dictionary. Surface: lifecycle + file-open handoff for 
 | `keynote_export_movie` | Export as movie |
 | `keynote_export_pptx` | Export as PowerPoint |
 
-## Pages (5 tools)
+## Pages (5 tools) — `@creator-studio-os/iwork-docs`
 
 | Tool | Purpose |
 |------|---------|
@@ -130,7 +137,7 @@ Logic has no AppleScript dictionary. Surface: lifecycle + file-open handoff for 
 | `pages_export_word` | Export as Word |
 | `pages_export_epub` | Export as EPUB |
 
-## Numbers (5 tools)
+## Numbers (5 tools) — `@creator-studio-os/iwork-docs`
 
 | Tool | Purpose |
 |------|---------|
@@ -140,7 +147,7 @@ Logic has no AppleScript dictionary. Surface: lifecycle + file-open handoff for 
 | `numbers_export_excel` | Export as Excel |
 | `numbers_export_csv` | Export as CSV |
 
-## Infrastructure (4 tools)
+## Infrastructure (4 tools) — `@creator-studio-os/core` + `@creator-studio-os/protocols`
 
 | Tool | Purpose |
 |------|---------|

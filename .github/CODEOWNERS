@@ -1,0 +1,12 @@
+# CODEOWNERS — review assignment for Creator Studio OS
+# Anyone reviewing must understand the macOS automation surface.
+
+* @mcp-tool-shop
+
+# AppleScript / FCP automation requires extra care
+/packages/core/src/applescript.ts @mcp-tool-shop
+/packages/fcp/                    @mcp-tool-shop
+/packages/motion/                 @mcp-tool-shop
+
+# Publish workflow is a one-way door
+/.github/workflows/publish.yml    @mcp-tool-shop

@@ -1,30 +1,67 @@
 ---
 title: Architecture
-description: How Creator Studio OS is structured — tool layers, data directory, FCPXML authoring, and the cross-app composite chain.
+description: How Creator Studio OS is structured — npm workspace layout, app layers, FCPXML authoring, and the cross-app composite chain.
 sidebar:
-  order: 4
+  order: 5
 ---
 
 ## Overview
 
-Creator Studio OS is a Node.js MCP server. It receives tool calls from your MCP client (Claude, or any MCP-compatible client), dispatches them to the appropriate app-layer module, and returns structured results.
+Creator Studio OS is a Node.js MCP server distributed as a 10-package npm workspace. The umbrella CLI receives tool calls from your MCP client (Claude, or any MCP-compatible client), dispatches them to the appropriate per-app package, and returns structured results.
 
 ```
 MCP Client (Claude)
     │
     ▼
-creator-studio-os MCP server
-    ├── src/tools/         # 78 MCP tool definitions
-    ├── src/apps/          # Per-app modules (fcp, compressor, motion, ...)
-    ├── src/fcpxml/        # FCPXML 1.14 builder + validator
-    ├── src/protocols/     # Cross-app protocol runners
-    ├── src/projects/      # project.json schema + resolver
-    └── src/errors.ts      # Structured error shape
+@creator-studio-os/creator-studio-os         (umbrella CLI)
+    │
+    ├── @creator-studio-os/protocols         (cross-app pipelines)
+    │   └── depends on all 8 leaves below
+    │
+    ├── @creator-studio-os/fcp               (FCPXML authoring + library introspection)
+    ├── @creator-studio-os/compressor        (headless encode)
+    ├── @creator-studio-os/motion            (OZML edit + render)
+    ├── @creator-studio-os/pixelmator        (full sdef automation)
+    ├── @creator-studio-os/keynote           (slide composition)
+    ├── @creator-studio-os/logic             (project lifecycle)
+    ├── @creator-studio-os/iwork-docs        (Pages + Numbers shared)
+    │
+    └── @creator-studio-os/core              (shared runtime — base of dependency tree)
 ```
+
+## Workspace layout
+
+```
+creator-studio-os/
+├── apps/
+│   └── creator-studio-os/         # umbrella CLI package
+├── packages/
+│   ├── core/                      # shared runtime — AppleScript, schema, errors, ledger
+│   ├── compressor/                # Compressor CLI + monitor
+│   ├── fcp/                       # FCPXML 1.14 builder + DTD validator
+│   ├── iwork-docs/                # Pages + Numbers shared automation
+│   ├── keynote/                   # Keynote osascript surface
+│   ├── logic/                     # Logic Pro lifecycle
+│   ├── motion/                    # Motion OZML mutation + render
+│   ├── pixelmator/                # Pixelmator Pro full sdef
+│   └── protocols/                 # cross-app pipelines
+├── docs/                          # roadmaps, reference, threat model
+├── site/                          # this handbook (Astro Starlight)
+└── tests/                         # cross-package integration + smoke
+```
+
+Each `packages/<name>/` is an independently-versioned, independently-published npm package with its own `src/`, `tests/`, `tsconfig.json`, and `package.json`. The root `package.json` is private (`"private": true`) and exists only to hold the workspace declaration.
 
 ## App layers
 
-Each app has its own module in `src/apps/`:
+Each `packages/<app>/src/` follows a consistent shape:
+
+- **`tools.ts`** — MCP tool registration entry points (the surface area that ships)
+- **`app.ts`** — process lifecycle helpers (open / running / activate)
+- **`recovery.ts`** — daemon recovery hooks
+- Per-feature modules — for example `packages/motion/src/textEdit.ts` (OZML), `packages/pixelmator/src/brandCard.ts` (composition)
+
+Per-app specifics:
 
 - **FCP** — FCPXML authoring + DTD validation + osascript for library/event inspection
 - **Compressor** — CLI wrapper (`Compressor -batchFilePath`) + batch XML builder + poll/monitor
@@ -35,7 +72,7 @@ Each app has its own module in `src/apps/`:
 
 ## FCPXML authoring
 
-FCP's AppleScript dictionary is read-only. Timeline authoring uses FCPXML import:
+FCP's AppleScript dictionary is **read-only**. Timeline authoring uses FCPXML import:
 
 1. Claude provides a JSON timeline spec
 2. `fcp_fcpxml_build` constructs FCPXML 1.14 (assets, clips, titles, transitions, markers)
@@ -86,11 +123,11 @@ $CREATOR_STUDIO_DATA_DIR/           # default: ~/creator-studio/
     └── presets/                    # Compressor settings
 ```
 
-`src/projects/resolve.ts` enforces the schema and resolves all paths from a project name.
+`@creator-studio-os/core` enforces the schema and resolves all paths from a project name. The data directory is the only filesystem region the runtime ever writes to.
 
 ## Error shape
 
-All errors use `CreatorStudioError { code, message, hint, cause?, retryable? }`. Error codes are an exhaustive union in `src/errors.ts`. No raw stack traces are ever returned to the MCP client.
+All errors use `CreatorStudioError { code, message, hint, cause?, retryable? }`. Error codes are an exhaustive union exported from `@creator-studio-os/core`. No raw stack traces are ever returned to the MCP client.
 
 ## Security design
 
