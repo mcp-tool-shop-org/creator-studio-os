@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "name": "Creator Studio OS",
+  "slug": "csos-showcase",
+  "kind": "trailer",
+  "brand": {
+    "primaryColor": "#1a1a2e",
+    "secondaryColor": "#e0e0e0",
+    "fontFamily": "SF Pro Display"
+  },
+  "deliverables": {
+    "main": {
+      "format": "mov",
+      "resolution": "1920x1080",
+      "codec": "ProRes 422",
+      "frameRate": "29.97"
+    },
+    "social": {
+      "format": "mp4",
+      "resolution": "1080x1080",
+      "codec": "H.264",
+      "frameRate": "29.97"
+    }
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "title": "The Problem",
+      "durationSeconds": 5,
+      "notes": "Show cluttered desktop with FCP, Compressor, Motion all open simultaneously. Voice-over: 'Eight apps. One workflow. Zero coordination — until now.'"
+    },
+    {
+      "id": "fcp",
+      "title": "Final Cut Pro",
+      "durationSeconds": 6,
+      "notes": "Demo fcp_fcpxml_build assembling a timeline from a JSON spec in under a second. Show the spec on the left, the FCP timeline on the right."
+    },
+    {
+      "id": "motion",
+      "title": "Motion Templates",
+      "durationSeconds": 6,
+      "notes": "Show motion_template_set_param updating live title text inside .motn files with no GUI. The parameter changes in real time in the Motion canvas."
+    },
+    {
+      "id": "compressor",
+      "title": "Compressor Pipeline",
+      "durationSeconds": 5,
+      "notes": "compressor_encode submitting a ProRes batch job, compressor_monitor_stream showing live progress bars updating in the terminal."
+    },
+    {
+      "id": "pixelmator",
+      "title": "Pixelmator Pro",
+      "durationSeconds": 6,
+      "notes": "pixelmator_compose_brand_card generating social cards from a Pixelmator template at three aspect ratios: 16:9, 1:1, 9:16. All in one call."
+    },
+    {
+      "id": "keystone",
+      "title": "The Protocol",
+      "durationSeconds": 7,
+      "notes": "csos_protocol_run tying all 8 apps together in sequence — brand cards, Motion title, FCPXML build, FCP import, Compressor encode — one command, twelve steps."
+    }
+  ],
+  "motionTemplatePath": "",
+  "motionTitleText": "Creator Studio OS",
+  "scoreMap": {
+    "scenes": [
+      {
+        "id": "hook",
+        "clips": [
+          { "id": "tension-01", "file": "audio/tension-loop.aif", "startTime": 0, "durationSeconds": 5 }
+        ]
+      },
+      {
+        "id": "fcp",
+        "clips": [
+          { "id": "build-01", "file": "audio/build-loop.aif", "startTime": 0, "durationSeconds": 6 }
+        ]
+      },
+      {
+        "id": "motion",
+        "clips": [
+          { "id": "build-02", "file": "audio/build-loop.aif", "startTime": 0, "durationSeconds": 6 }
+        ]
+      },
+      {
+        "id": "compressor",
+        "clips": [
+          { "id": "peak-01", "file": "audio/peak-sting.aif", "startTime": 0, "durationSeconds": 5 }
+        ]
+      },
+      {
+        "id": "pixelmator",
+        "clips": [
+          { "id": "peak-02", "file": "audio/peak-sting.aif", "startTime": 0, "durationSeconds": 6 }
+        ]
+      },
+      {
+        "id": "keystone",
+        "clips": [
+          { "id": "resolve-01", "file": "audio/resolve-swell.aif", "startTime": 0, "durationSeconds": 7 }
+        ]
+      }
+    ]
+  }
+}

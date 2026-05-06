@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] — 2026-05-05
+
+### Added (Phase 2.4 — Keystone protocol v1.7.0)
+
+**`csos_protocol_run` — MCP SEP-1686 Tasks-compliant cross-app protocol engine:**
+
+- **MCP Tasks integration:** `csos_protocol_run` is registered via `server.experimental.tasks.registerToolTask` with `taskSupport: "required"`. Returns `taskId` immediately; clients poll `tasks/get` for status, `tasks/result` for the final step summary. `InMemoryTaskStore` wired to `McpServer` constructor. Background goroutine runs the protocol and calls `taskStore.storeTaskResult` on completion or failure.
+- **`protocol.steam-trailer-minimal` (12-step pipeline):** `validate-project` → `compose-brand-cards` → `edit-motion-title` → `resolve-fcp-params` → `build-fcpxml` → `safety-preflight` → `dtd-validate` → `fcp-import` → `compressor-encode` → `monitor-encode` → `verify-output` → `write-replay-manifest`. Dry-run safe; all external calls are mocked. First true cross-app protocol in csos — all 8 apps coordinated.
+- **Idempotency substrate:** sha256(protocolName|slug|sceneIds|deliverables) as idempotency key. Replay manifest at `out/.csos/replay-<taskId>.json` (11 step entries + `completedAt`). `--resume <taskId>` skips steps whose inputHash matches the previous manifest.
+- **`csos_protocol_list` / `csos_protocol_describe`:** lightweight synchronous tools for enumerating and describing protocols. No task store required.
+- **`src/projects/types.ts` — ProjectV2 schema:** `schemaVersion: 2`, `slug` (kebab-case), `brand` (primaryColor/secondaryColor/fontFamily/logoPath), `deliverables: Record<string, {format, resolution, codec, frameRate}>`, `scenes: [{id, title, durationSeconds, notes?}]`, `motionTemplatePath?`, `motionTitleText?`, `scoreMap?` (Motif-compatible, no Motif package dep).
+- **`demo/csos-showcase/project.json`:** 6-scene bundled demo about csos itself — hook → FCP → Motion → Compressor → Pixelmator → keystone. All assets in-repo, scoreMap included.
+- **Smoke Phase 8:** `p8-protocol-steam-trailer.ts` — 2-scene fixture dry-run. Gates: 12 steps enumerate, MOV placeholder exists, manifest has 11 entries with valid idempotencyKey, resume run skips all non-final steps.
+- **`creator-studio-os protocol` CLI subcommand:** `list`, `describe <name>`, `run <name> --project <path> [--dry-run] [--resume <taskId>]`. Synchronous CLI path (no task store); tick-by-tick step output.
+- **Error codes:** `E_PROTOCOL_NOT_FOUND`, `E_PROTOCOL_FAILED`, `E_PROTOCOL_RESUME_FAILED`, `E_PROJECT_V2_INVALID`.
+
+**Tests:** 396 total (36 new — 14 `protocol-types.test.ts` + 22 `protocol-steam-trailer.test.ts`). Smoke: 9/9 phases pass.
+
+---
+
 ## [1.6.5] — 2026-05-05
 
 ### Added (Phase 2.3 — Keynote 45-tool leapfrog)

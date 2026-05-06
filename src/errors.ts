@@ -43,6 +43,10 @@ export type ErrorCode =
   | "E_REF_CLIP_PROPAGATION"
   | "E_MULTICAM_ANGLE_MISSING"
   | "E_CAPTION_ROLE_INVALID"
+  | "E_PROTOCOL_NOT_FOUND"
+  | "E_PROTOCOL_FAILED"
+  | "E_PROTOCOL_RESUME_FAILED"
+  | "E_PROJECT_V2_INVALID"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {

@@ -10,13 +10,19 @@ Usage:
   creator-studio-os <command>
 
 Commands:
-  verify           Run preflight checks (platform, osascript, xmllint, FCP, DTD, data dir, FCPXML round-trip)
-  smoke            Run the v1.6.1 integration smoke matrix (7 phases, real apps required)
-  doctor           One-shot diagnostic dump — app versions, queue state, tool-compass, data dir
-  ledger <project> Read a project's operation ledger (--since 1h, --tool <name>, --errors, --tail N, --json)
-  serve            Start the MCP server on stdio (same as the default 'creator-studio-os' bin)
-  version          Print version
-  help             Show this message
+  verify              Run preflight checks (platform, osascript, xmllint, FCP, DTD, data dir, FCPXML round-trip)
+  smoke               Run the v1.7.0 integration smoke matrix (8 phases, real apps required)
+  doctor              One-shot diagnostic dump — app versions, queue state, tool-compass, data dir
+  ledger <project>    Read a project's operation ledger (--since 1h, --tool <name>, --errors, --tail N, --json)
+  protocol <subcommand>
+    protocol list     List all registered cross-app protocols
+    protocol describe <name>
+                      Describe a protocol's steps and purpose
+    protocol run <name> --project <path> [--dry-run] [--resume <taskId>]
+                      Run a protocol end-to-end (synchronous; use csos_protocol_run MCP tool for async)
+  serve               Start the MCP server on stdio (same as the default 'creator-studio-os' bin)
+  version             Print version
+  help                Show this message
 
 Smoke flags:
   --ci             Skip human-eye prompts; run only auto-verifiable phases
@@ -24,6 +30,11 @@ Smoke flags:
 
 Doctor / ledger flags:
   --json           Emit JSON instead of human-readable output
+
+Protocol flags:
+  --project <path>  Absolute path to a project.json v2 file
+  --dry-run         Mock all external calls (AppleScript, Compressor, FCP)
+  --resume <taskId> Skip steps already completed in a previous run
 
 Environment:
   CREATOR_STUDIO_DATA_DIR    Override data directory (default: /Volumes/T9-Shared/AI/creator-studio)
@@ -97,6 +108,75 @@ async function main() {
         console.log(formatLedger(result));
       }
       return;
+    }
+    case "protocol": {
+      const sub = process.argv[3];
+      if (!sub || sub === "list") {
+        const { listProtocols } = await import("./protocols/index.js");
+        const protocols = listProtocols();
+        for (const p of protocols) {
+          console.log(`${p.name} (${p.stepCount} steps)`);
+          console.log(`  ${p.description}\n`);
+        }
+        return;
+      }
+      if (sub === "describe") {
+        const protoName = process.argv[4];
+        if (!protoName) {
+          console.error("Usage: creator-studio-os protocol describe <name>");
+          process.exit(2);
+        }
+        const { describeProtocol } = await import("./protocols/index.js");
+        try {
+          const info = describeProtocol(protoName);
+          console.log(`Protocol: ${info.name}`);
+          console.log(`Description: ${info.description}`);
+          console.log(`Steps (${info.stepNames.length}):`);
+          info.stepNames.forEach((s, i) => console.log(`  ${i + 1}. ${s}`));
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : String(err));
+          process.exit(1);
+        }
+        return;
+      }
+      if (sub === "run") {
+        const protoName = process.argv[4];
+        if (!protoName) {
+          console.error("Usage: creator-studio-os protocol run <name> --project <path> [--dry-run] [--resume <taskId>]");
+          process.exit(2);
+        }
+        const cliArgs = process.argv.slice(5);
+        const projectPath = cliArgs[cliArgs.indexOf("--project") + 1];
+        if (!projectPath || projectPath.startsWith("-")) {
+          console.error("--project <path> is required");
+          process.exit(2);
+        }
+        const dryRun = cliArgs.includes("--dry-run");
+        const resumeIdx = cliArgs.indexOf("--resume");
+        const resume = resumeIdx >= 0 ? cliArgs[resumeIdx + 1] : undefined;
+        const { runProtocol } = await import("./protocols/index.js");
+        let stepCount = 0;
+        let failCount = 0;
+        const startTime = Date.now();
+        try {
+          for await (const step of runProtocol({ name: protoName, projectPath, dryRun, resume })) {
+            stepCount++;
+            const icon = step.status === "completed" ? "✓" : step.status === "skipped" ? "↩" : step.status === "failed" ? "✗" : "…";
+            console.log(`  ${icon} [${stepCount.toString().padStart(2, "0")}] ${step.stepName} (${step.durationMs}ms)`);
+            if (step.detail) console.log(`       ${step.detail}`);
+            if (step.status === "failed") failCount++;
+          }
+        } catch (err) {
+          console.error(`\nProtocol error: ${err instanceof Error ? err.message : String(err)}`);
+          process.exit(1);
+        }
+        const elapsed = Date.now() - startTime;
+        console.log(`\n${failCount === 0 ? "✓" : "✗"} ${stepCount} step(s) in ${elapsed}ms — ${failCount === 0 ? "SUCCESS" : `${failCount} FAILED`}`);
+        process.exit(failCount === 0 ? 0 : 1);
+      }
+      console.error(`Unknown protocol subcommand: ${sub}\n`);
+      console.error(HELP);
+      process.exit(2);
     }
     case "serve": {
       await import("./server.js");

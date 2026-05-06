@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { InMemoryTaskStore } from "@modelcontextprotocol/sdk/experimental/tasks/stores/in-memory.js";
 import { registerFcpTools } from "./apps/fcp/tools.js";
 import { registerCompressorTools } from "./apps/compressor/tools.js";
 import { registerPixelmatorTools } from "./apps/pixelmator/tools.js";
@@ -10,12 +11,18 @@ import { registerKeynoteTools } from "./apps/keynote/tools.js";
 import { registerPagesTools } from "./apps/pages/tools.js";
 import { registerNumbersTools } from "./apps/numbers/tools.js";
 import { registerStatusTool } from "./apps/status-tool.js";
+import { registerProtocolTools } from "./protocols/index.js";
 
 async function main() {
-  const server = new McpServer({
-    name: "creator-studio-os",
-    version: "1.6.5",
-  });
+  const taskStore = new InMemoryTaskStore();
+
+  const server = new McpServer(
+    {
+      name: "creator-studio-os",
+      version: "1.7.0",
+    },
+    { taskStore },
+  );
 
   registerFcpTools(server);
   registerCompressorTools(server);
@@ -26,6 +33,7 @@ async function main() {
   registerPagesTools(server);
   registerNumbersTools(server);
   registerStatusTool(server);
+  registerProtocolTools(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
