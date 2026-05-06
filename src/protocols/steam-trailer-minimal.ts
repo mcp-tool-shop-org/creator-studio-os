@@ -28,6 +28,8 @@ import { createHash } from "node:crypto";
 import { runAppleScript } from "../runners/applescript.js";
 import { buildProjectFcpxml } from "../fcpxml/builder.js";
 import { loadConfig } from "../config.js";
+import { appendLedger } from "../ledger/index.js";
+import { CreatorStudioError } from "../errors.js";
 import type { ProjectV2, Scene } from "../projects/types.js";
 import type { ProtocolDef, ProtocolStep, RunProtocolOpts, ReplayManifest } from "./types.js";
 
@@ -250,7 +252,24 @@ end tell`;
             await runAppleScript(script);
             created.push(scene.id);
           } catch (err) {
-            // Non-fatal: log and continue with placeholder
+            // Only swallow E_AUTOMATION_DENIED (app not running / permission denied).
+            // All other errors — including osascript exit -2710 (wrong class name) —
+            // are code bugs and must propagate so they're never silently papered over.
+            if (!(err instanceof CreatorStudioError && err.code === "E_AUTOMATION_DENIED")) {
+              throw err;
+            }
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await appendLedger({
+              ts: new Date().toISOString(),
+              tool: "pixelmator_brand_card",
+              projectName: project.name,
+              args: { sceneId: scene.id, fallback: "placeholder" },
+              error: {
+                code: err instanceof CreatorStudioError ? err.code : "E_INTERNAL",
+                message: errMsg,
+              },
+              durationMs: Date.now() - t,
+            }).catch(() => undefined);
             await writeFile(cardPath, Buffer.alloc(1));
             created.push(`${scene.id}(placeholder)`);
           }

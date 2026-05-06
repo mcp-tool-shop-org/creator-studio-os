@@ -32,6 +32,8 @@ import { createHash } from "node:crypto";
 import { runAppleScript } from "../runners/applescript.js";
 import { buildProjectFcpxml } from "../fcpxml/builder.js";
 import { loadConfig } from "../config.js";
+import { appendLedger } from "../ledger/index.js";
+import { CreatorStudioError } from "../errors.js";
 import type { ProjectV2, Scene } from "../projects/types.js";
 import type { ProtocolDef, ProtocolStep, RunProtocolOpts, ReplayManifest } from "./types.js";
 
@@ -296,8 +298,25 @@ end tell`;
           try {
             await runAppleScript(script);
             created.push(scene.id);
-          } catch {
-            // Pixelmator unavailable — ffmpeg lavfi stub so downstream steps still run
+          } catch (err) {
+            // Only swallow E_AUTOMATION_DENIED (app not running / permission denied).
+            // All other errors — including osascript exit -2710 (wrong class name) —
+            // are code bugs and must propagate so they're never silently papered over.
+            if (!(err instanceof CreatorStudioError && err.code === "E_AUTOMATION_DENIED")) {
+              throw err;
+            }
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await appendLedger({
+              ts: new Date().toISOString(),
+              tool: "pixelmator_brand_card",
+              projectName: project.name,
+              args: { sceneId: scene.id, fallback: "ffmpeg-lavfi" },
+              error: {
+                code: err instanceof CreatorStudioError ? err.code : "E_INTERNAL",
+                message: errMsg,
+              },
+              durationMs: Date.now() - t,
+            }).catch(() => undefined);
             const { execFile } = await import("node:child_process");
             const { promisify } = await import("node:util");
             const execFileAsync = promisify(execFile);
