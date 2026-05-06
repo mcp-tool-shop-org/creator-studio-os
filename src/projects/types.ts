@@ -15,6 +15,7 @@ import { z } from "zod";
 export const SceneSchema = z.object({
   id: z.string().min(1).describe("Unique kebab-case identifier, e.g. 'hook' or 'scene-01'"),
   title: z.string().min(1).describe("Human-readable scene title used as clip name in FCPXML"),
+  subhead: z.string().optional().describe("Lower-third subtitle; patches textNodeIndex=1 in Motion templates"),
   durationSeconds: z.number().positive().describe("Scene duration in seconds"),
   notes: z.string().optional().describe("Director notes; used as presenter notes / scene context"),
 });

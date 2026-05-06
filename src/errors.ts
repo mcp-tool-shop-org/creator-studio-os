@@ -47,6 +47,7 @@ export type ErrorCode =
   | "E_PROTOCOL_FAILED"
   | "E_PROTOCOL_RESUME_FAILED"
   | "E_PROJECT_V2_INVALID"
+  | "E_COMPRESSOR_FLUSH_TIMEOUT"
   | "E_INTERNAL";
 
 export class CreatorStudioError extends Error {

@@ -516,7 +516,7 @@ export async function runPhase8(
 
   return runPhase8DryRun(
     id,
-    "Protocol: brand-deck-minimal dry-run — 12 steps, manifest, idempotency",
+    "Protocol: brand-deck-minimal dry-run — 13 steps, manifest, idempotency",
     start,
     opts.smokeProjectDir,
   );

@@ -139,6 +139,9 @@ function resolveBundledPreset(settingsDir: string, codec: string, resolution: st
     return join(settingsDir, "ProRes 422 SD.setting");
   }
   if (c.includes("prores4444")) {
+    // ProRes 4444 lives in a different settings tree (StompUI.framework, not CompressorKit.framework).
+    // Callers that need 4444 should use cfg.compressorProRes4444SettingPath directly rather than
+    // this helper, which only knows the CompressorKit settings directory.
     return join(settingsDir, "ProRes 422 1080.setting");
   }
   if (c.includes("hevc") || c.includes("h.265") || c.includes("h265")) {
@@ -380,13 +383,12 @@ end tell`;
         const { renderViaCompressor } = await import("../apps/motion/render.js");
         const { waitFor } = await import("../apps/compressor/monitor.js");
         const cfg = loadConfig();
-        const primaryKey = Object.keys(project.deliverables)[0] ?? "main";
-        const deliverable = project.deliverables[primaryKey]!;
-        const settingPath = resolveBundledPreset(
-          cfg.compressorBundledSettingsDir,
-          deliverable.codec,
-          deliverable.resolution,
-        );
+        // Scene clips are rendered as ProRes 4444 (alpha-channel) so they can be
+        // composited over brand cards in compressor-encode via ffmpeg overlay.
+        // Atmospheric-Lower Third and all Apple Compositions lower-third templates
+        // have a transparent canvas above the lower-third band (probe confirmed
+        // yuva444p12le, rows 0-779 A=0 on a 1080p frame).
+        const sceneClipSettingPath = cfg.compressorProRes4444SettingPath;
         const rendered: string[] = [];
         for (const scene of project.scenes) {
           const clonedMotnPath = join(sceneMotnsDir, `${scene.id}.motn`);
@@ -404,13 +406,56 @@ end tell`;
               throw err;
             }
           }
+          // Patch subhead (textNodeIndex=1) when project scene specifies one.
+          // Clears the template's default "Description" placeholder.
+          if (scene.subhead !== undefined) {
+            try {
+              await editText(clonedMotnPath, scene.subhead, { textNodeIndex: 1 });
+            } catch (err) {
+              if (err instanceof CreatorStudioError && err.code === "E_OZML_PARAM_NOT_FOUND") {
+                await patchSiblingText(clonedMotnPath, scene.subhead, { textNodeIndex: 1 });
+              } else {
+                throw err;
+              }
+            }
+          }
           const { jobId } = await renderViaCompressor({
             motnPath: clonedMotnPath,
-            settingPath,
+            settingPath: sceneClipSettingPath,
             locationPath: clipPath,
             batchName: `csos-${project.slug}-${scene.id}`,
           });
           await waitFor({ jobId, untilStatus: "completed", timeoutSec: 120 });
+          // Compressor reports "completed" before the QuickTime moov atom is
+          // fully flushed to disk. Poll ffprobe until the file is readable
+          // (up to 5s) before handing the path to the composite step.
+          {
+            const { execFile: ef } = await import("node:child_process");
+            const { promisify: prom } = await import("node:util");
+            const probe = prom(ef);
+            let ready = false;
+            for (let attempt = 0; attempt < 10; attempt++) {
+              try {
+                await probe("ffprobe", [
+                  "-v", "error",
+                  "-show_entries", "stream=codec_name",
+                  "-of", "default=noprint_wrappers=1",
+                  clipPath,
+                ]);
+                ready = true;
+                break;
+              } catch {
+                await new Promise((r) => setTimeout(r, 500));
+              }
+            }
+            if (!ready) {
+              throw new CreatorStudioError(
+                "E_COMPRESSOR_FLUSH_TIMEOUT",
+                `moov atom not ready after 5s: ${clipPath}`,
+                "Compressor may need more time to flush — try increasing the poll timeout",
+              );
+            }
+          }
           sceneClipPaths.push(clipPath);
           rendered.push(scene.id);
         }
@@ -719,55 +764,86 @@ end tell`;
 
           const slideshowPath = join(projectOutDir, `${project.slug}-src.mov`);
           const { width, height } = fcpParams.resolution;
-          const ffArgs: string[] = ["-y", "-loglevel", "error"];
 
           const firstClipSize = sceneClipPaths.length > 0
             ? await stat(sceneClipPaths[0]!).then((s) => s.size).catch(() => 0)
             : 0;
           const clipsAreReal = firstClipSize > 100;
 
-          if (clipsAreReal && sceneClipPaths.length === fcpParams.scenes.length) {
-            // Path 1: concat per-scene Motion clips via concat demuxer (-c copy)
-            const concatListPath = join(csosDir, "scene-clips.txt");
-            const concatList = sceneClipPaths.map((p) => `file '${p}'`).join("\n");
-            await writeFile(concatListPath, concatList, "utf-8");
-            ffArgs.push(
+          const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
+            .then((s) => s.size)
+            .catch(() => 0);
+          const cardsAreReal = firstCardSize > 100;
+
+          if (clipsAreReal && sceneClipPaths.length === fcpParams.scenes.length && cardsAreReal) {
+            // Path 1: composite brand card (background) + ProRes 4444 Motion clip (overlay)
+            // per scene, then concat. The Motion clips have a transparent canvas above the
+            // lower-third band (yuva444p12le, A=0 outside rows 780-960 on 1080p), so the
+            // brand card shows through in the upper region.
+            const compositedDir = join(csosDir, "scene-composited");
+            await mkdir(compositedDir, { recursive: true });
+            const compositedPaths: string[] = [];
+            for (let i = 0; i < project.scenes.length; i++) {
+              const scene = project.scenes[i]!;
+              const compositedPath = join(compositedDir, `${scene.id}.mov`);
+              await execFileAsync("ffmpeg", [
+                "-y", "-loglevel", "error",
+                "-loop", "1", "-t", String(scene.durationSeconds), "-i", fcpParams.scenes[i]!.cardPath,
+                "-i", sceneClipPaths[i]!,
+                "-filter_complex",
+                `[0:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[bg];[bg][1:v]overlay=0:0:shortest=1[out]`,
+                "-map", "[out]",
+                "-c:v", "prores_ks",
+                "-t", String(scene.durationSeconds),
+                compositedPath,
+              ], { maxBuffer: 20 * 1024 * 1024 });
+              compositedPaths.push(compositedPath);
+            }
+            const concatListPath = join(csosDir, "scene-composited.txt");
+            await writeFile(concatListPath, compositedPaths.map((p) => `file '${p}'`).join("\n"), "utf-8");
+            await execFileAsync("ffmpeg", [
+              "-y", "-loglevel", "error",
               "-f", "concat", "-safe", "0", "-i", concatListPath,
               "-c", "copy",
               slideshowPath,
-            );
-          } else {
-            const firstCardSize = await stat(fcpParams.scenes[0]!.cardPath)
-              .then((s) => s.size)
-              .catch(() => 0);
-            const cardsAreReal = firstCardSize > 100;
-
-            if (cardsAreReal) {
-              // Path 2: PNG slideshow → ProRes transcode
-              for (const sc of fcpParams.scenes) {
-                ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
-              }
-              const filterParts = fcpParams.scenes.map(
-                (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
-              );
-              const concatFilter =
-                filterParts.join(";") +
-                ";" +
-                fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
-                `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
-              ffArgs.push("-filter_complex", concatFilter, "-map", "[out]");
-            } else {
-              // Path 3: lavfi fill
-              const hex = project.brand.primaryColor.replace("#", "");
-              ffArgs.push(
-                "-f", "lavfi",
-                "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
-              );
+            ], { maxBuffer: 10 * 1024 * 1024 });
+          } else if (clipsAreReal && sceneClipPaths.length === fcpParams.scenes.length) {
+            // Path 2: concat raw Motion clips — no brand cards available
+            const concatListPath = join(csosDir, "scene-clips.txt");
+            await writeFile(concatListPath, sceneClipPaths.map((p) => `file '${p}'`).join("\n"), "utf-8");
+            await execFileAsync("ffmpeg", [
+              "-y", "-loglevel", "error",
+              "-f", "concat", "-safe", "0", "-i", concatListPath,
+              "-c", "copy",
+              slideshowPath,
+            ], { maxBuffer: 10 * 1024 * 1024 });
+          } else if (cardsAreReal) {
+            // Path 3: PNG slideshow → ProRes transcode (no Motion clips)
+            const ffArgs: string[] = ["-y", "-loglevel", "error"];
+            for (const sc of fcpParams.scenes) {
+              ffArgs.push("-loop", "1", "-t", String(sc.durationSeconds), "-i", sc.cardPath);
             }
-            ffArgs.push("-c:v", "prores_ks", slideshowPath);
+            const filterParts = fcpParams.scenes.map(
+              (_, i) => `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=disable,setsar=1[v${i}]`,
+            );
+            const concatFilter =
+              filterParts.join(";") +
+              ";" +
+              fcpParams.scenes.map((_, i) => `[v${i}]`).join("") +
+              `concat=n=${fcpParams.scenes.length}:v=1:a=0[out]`;
+            ffArgs.push("-filter_complex", concatFilter, "-map", "[out]", "-c:v", "prores_ks", slideshowPath);
+            await execFileAsync("ffmpeg", ffArgs, { maxBuffer: 10 * 1024 * 1024 });
+          } else {
+            // Path 4: lavfi solid-color fill — last resort
+            const hex = project.brand.primaryColor.replace("#", "");
+            await execFileAsync("ffmpeg", [
+              "-y", "-loglevel", "error",
+              "-f", "lavfi",
+              "-i", `color=c=#${hex}:s=${width}x${height}:d=${fcpParams.totalDurationSeconds}`,
+              "-c:v", "prores_ks",
+              slideshowPath,
+            ], { maxBuffer: 10 * 1024 * 1024 });
           }
-
-          await execFileAsync("ffmpeg", ffArgs, { maxBuffer: 10 * 1024 * 1024 });
 
           const cfg = loadConfig();
           const settingPath = resolveBundledPreset(

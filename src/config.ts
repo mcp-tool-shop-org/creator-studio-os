@@ -13,6 +13,8 @@ export interface Config {
   compressorBundleId: string;
   compressorBinaryPath: string;
   compressorBundledSettingsDir: string;
+  /** ProRes 4444 with alpha — for scene-clip renders that need transparent canvas overlay. */
+  compressorProRes4444SettingPath: string;
   pixelmatorAppPath: string;
   pixelmatorBundleId: string;
   logicAppPath: string;
@@ -51,6 +53,9 @@ export function loadConfig(): Config {
     compressorBundledSettingsDir:
       process.env.CREATOR_STUDIO_COMPRESSOR_BUNDLED_SETTINGS ??
       `${compressorAppPath}/Contents/PlugIns/Compressor/CompressorKit.bundle/Contents/Frameworks/Compressor.framework/Versions/A/Frameworks/CompressorKit.framework/Versions/A/Resources/Settings`,
+    compressorProRes4444SettingPath:
+      process.env.CREATOR_STUDIO_COMPRESSOR_PRORES4444_SETTING ??
+      `${compressorAppPath}/Contents/PlugIns/Compressor/CompressorKit.bundle/Contents/Frameworks/Compressor.framework/Versions/A/Frameworks/StompUI.framework/Versions/A/Resources/BuiltInSettings/ProRes/proRes4444Name.compressorsetting`,
     pixelmatorAppPath:
       process.env.CREATOR_STUDIO_PIXELMATOR_PATH ??
       "/Applications/Pixelmator Pro Creator Studio.app",
