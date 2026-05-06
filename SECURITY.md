@@ -1,8 +1,17 @@
 # Security
 
+## Supported Versions
+
+| Version | Supported |
+|---------|-----------|
+| 1.7.x   | ✅ Current |
+| < 1.7   | ❌ End of life |
+
 ## Reporting
 
 If you find a vulnerability, please email **64996768+mcp-tool-shop@users.noreply.github.com** or open a private security advisory at https://github.com/mcp-tool-shop-org/creator-studio-os/security/advisories.
+
+**Response timeline:** We acknowledge reports within 48 hours and aim to patch critical issues within 7 days of confirmation.
 
 ## Threat model summary
 

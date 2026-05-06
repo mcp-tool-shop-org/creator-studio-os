@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.11] — 2026-05-06
+
+### Added (Full Treatment — Phases 0, 4 partial)
+- **Phase 0 (Shipcheck):** `SHIP_GATE.md` + `SCORECARD.md` from `npx @mcptoolshop/shipcheck init`. 28/35 items checked, 7 SKIP'd with justification, all hard gates A-D pass.
+- **Phase 4 (Coverage):** `@vitest/coverage-v8` with lcov/json reporters, coverage CI step, Codecov upload via `codecov-action@v4`.
+- **Phase 4 (Dependabot):** `.github/dependabot.yml` — monthly npm dependency updates, grouped, max 3 PRs (per `.claude/rules/github-actions.md`).
+- **Phase 4 (CI scanning):** `npm audit` step added to ci.yml for supply-chain scanning.
+- **Phase 3 plan:** `docs/phase-3.md` — v1.8.x build plan covering Logic depth (13 tools), Numbers data + Python sidecar (16 tools), Pages mail merge (12 tools), Motion media swap (4 tools), FCP parser + OTIO bridge (8 tools).
+
+### Changed
+- **README:** updated to v1.7.10 product reality (all 8 apps live, cross-app composite protocol, tool count, brand-deck-minimal walkthrough, threat model). Logo + badges centered. Handbook badge points to landing page that ships in next bump.
+- **SECURITY.md:** added Supported Versions table and 48h/7-day response timeline.
+- **`docs/roadmap.md`:** rewritten with Phase 3 / 4 / 5 / 6 / 7 strategic frame, total surface projection, out-of-scope reaffirmation.
+- Version bump: 1.7.10 → 1.7.11 (treatment patch — partial).
+
+### Deferred to next bump (Full Treatment Phases 1, 2, 3, 5, 6, 7)
+- README translations (Mike runs `polyglot-mcp` locally per `translation-workflow.md`)
+- Starlight handbook site (`npx @mcptoolshop/site-theme handbook --accent blue`)
+- Landing page deploy at `https://mcp-tool-shop-org.github.io/creator-studio-os/`
+- GitHub repo metadata (homepage URL — depends on landing page deploy; topics not yet set)
+- Repo-knowledge DB entry (`scan` + thesis + architecture + relationships)
+- Post-deploy verification (Pagefind, codecov badge real data, ja translation degenerate-output check)
+
+---
+
+## [1.7.10] — 2026-05-06
+
+### Fixed
+- Shortened motion scene content to fit Atmospheric-Lower Third fixed text bounds: title `"Motion Templates"` (16 chars, clipped) → `"OZML Edits"` (10 chars); subhead `"OZML mutation, no GUI"` (21 chars, clipped) → `"No GUI required"` (15 chars). Pure `demo/csos-showcase/project.json` edit.
+
+---
+
+## [1.7.9] — 2026-05-06
+
+### Changed
+- Brand card now carries constant `"Creator Studio OS"` identity (size 108, centered upper-half) instead of per-scene `scene.title`. The Motion lower-third at bottom-left is the sole carrier of per-scene content (title + subhead). Per-scene hue rotation still differentiates background colors.
+- Downloaded brand logo (`demo/csos-showcase/brand/csos-logo.png`, 929 KB) from `mcp-tool-shop-org/brand`. Logo is `rgb24` (no alpha) — not composited this version; deferred until a transparent version exists.
+
+---
+
+## [1.7.8] — 2026-05-05
+
+### Added
+- `compressor-encode` Path 1: ffmpeg overlay composites each ProRes 4444 scene clip (transparent alpha canvas) over its brand card PNG per scene, then concat — brand card is now the visible background behind the Motion lower-third
+- `subhead` field added to `SceneSchema` (`src/projects/types.ts`); patches `textNodeIndex=1` in Motion templates, clearing the `"Description"` placeholder
+- `compressorProRes4444SettingPath` added to `Config` (points to `StompUI.framework` `proRes4444Name.compressorsetting`, separate from the `CompressorKit` settings directory that `compressorBundledSettingsDir` covers)
+- `E_COMPRESSOR_FLUSH_TIMEOUT` error code
+
+### Fixed
+- Moov-atom race condition: Compressor reports `"completed"` before the QuickTime moov atom is fully flushed. Added 10×500ms `ffprobe` readiness poll after `waitFor` before handing the path to the composite step
+- `"Description"` placeholder in Atmospheric lower-third subhead now replaced by `scene.subhead` on all 6 showcase scenes
+
+---
+
+## [1.7.7] — 2026-05-05
+
+### Added
+- `patchSiblingText` function in `src/apps/motion/textEdit.ts`: handles Apple Compositions sibling-object OZML layout where `<object>` glyph elements are siblings of `<text>`, not children. All Apple-bundled Motion templates (Atmospheric-Lower Third, etc.) use this layout
+- 16 tests for `patchSiblingText` covering sibling replacement, `textNodeIndex` selection, output path, error codes, and `allowNonAscii`
+
+### Fixed
+- `E_OZML_PARAM_NOT_FOUND` on all Apple bundled Motion templates: `render-scene-clips` now tries `editText` first, falls back to `patchSiblingText` on `E_OZML_PARAM_NOT_FOUND`
+
+---
+
+## [1.7.6] — 2026-05-05
+
+### Added
+- `render-scene-clips` step (step 3 of `brand-deck-minimal`): per-scene Motion lower-third render via Compressor. Clones `.motn` template, patches scene title via OZML edit, submits headless Compressor render, writes `.mov` clip per scene under `out/.csos/scene-clips/`
+
+### Changed
+- `compressor-encode` source priority: (1) per-scene Motion clips → concat, (2) Pixelmator PNG slideshow, (3) lavfi fill
+
+---
+
+## [1.7.3] — 2026-05-05
+
+### Fixed
+- Pixelmator `compose-brand-cards`: replaced `make new rectangle` (exit -2710, wrong class) with `make new rectangle shape layer`. Fixed silent fallback that produced 35s of identical solid-color frames
+- `compose-brand-cards` catch block now only swallows `E_AUTOMATION_DENIED`; all other errors (including AppleScript -2710) propagate so they're never silently papered over
+
+---
+
 ## [1.7.2] — 2026-05-05
 
 ### Fixed (honest scope + visual correctness)

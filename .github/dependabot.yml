@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      production-deps:
+        patterns:
+          - "@modelcontextprotocol/*"
+          - "zod"
+          - "fast-xml-parser"
+      dev-deps:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "vitest"
+          - "@vitest/*"
+    open-pull-requests-limit: 3
