@@ -251,14 +251,10 @@ async function* run(
           created.push(scene.id);
         }
       } else {
-        // Real mode: generate a hue-shifted solid-color card per scene via ffmpeg lavfi.
-        // Each scene gets a 25° hue rotation from the primary brand color so every
-        // frame is visually distinct (pHash-detectable). Text overlay requires
-        // libfreetype (not in this ffmpeg build) — v1.7.3 adds composeBrandCard with
-        // a Pixelmator .pxd template for proper titled cards.
-        const { execFile } = await import("node:child_process");
-        const { promisify } = await import("node:util");
-        const execFileAsync = promisify(execFile);
+        // Real mode: Pixelmator Pro brand cards — hue-shifted background per scene
+        // + scene title text. Each scene gets a 25° hue rotation from primaryColor
+        // so frames are visually distinct. Falls back to ffmpeg lavfi stub on error.
+        const cfg = loadConfig();
 
         const primaryKey = Object.keys(project.deliverables)[0] ?? "main";
         const { width, height } = parseResolution(
@@ -266,6 +262,7 @@ async function* run(
         );
 
         const bgHex = project.brand.primaryColor.replace("#", "");
+        const fgHex = project.brand.secondaryColor.replace("#", "");
         const [baseH, baseS, baseL] = hexToHsl(bgHex);
 
         for (let i = 0; i < project.scenes.length; i++) {
@@ -274,18 +271,43 @@ async function* run(
           // Rotate hue 25° per scene → visually distinct frames across the deck
           const hue = (baseH + i * 25) % 360;
           const sceneHex = hslToHex(hue, Math.max(baseS, 0.3), Math.max(baseL, 0.15));
+          const script = `
+tell application id "${cfg.pixelmatorBundleId}"
+  set newDoc to make new document with properties {width:${width}, height:${height}, resolution:72}
+  tell newDoc
+    set bgLayer to make new rectangle at beginning of layers with properties {name:"bg", position:{0, 0}, width:${width}, height:${height}}
+    set fill color of styles of bgLayer to {${hexToRgb16(sceneHex)}}
+    set titleLayer to make new text layer at beginning of layers with properties {name:"title", text content:"${escapeAs(scene.title)}"}
+    tell text content of titleLayer
+      set its size to 96
+      set its color to {${hexToRgb16(fgHex)}}
+    end tell
+    set position of titleLayer to {${Math.round(width / 2)}, ${Math.round(height / 2)}}
+    export to (POSIX file "${cardPath}") as PNG
+  end tell
+  close newDoc saving no
+end tell`;
           try {
-            await execFileAsync("ffmpeg", [
-              "-y", "-loglevel", "error",
-              "-f", "lavfi",
-              "-i", `color=c=#${sceneHex}:s=${width}x${height}:d=1`,
-              "-vframes", "1",
-              cardPath,
-            ], { maxBuffer: 5 * 1024 * 1024 });
+            await runAppleScript(script);
             created.push(scene.id);
           } catch {
-            await writeFile(cardPath, Buffer.alloc(1));
-            created.push(`${scene.id}(placeholder)`);
+            // Pixelmator unavailable — ffmpeg lavfi stub so downstream steps still run
+            const { execFile } = await import("node:child_process");
+            const { promisify } = await import("node:util");
+            const execFileAsync = promisify(execFile);
+            try {
+              await execFileAsync("ffmpeg", [
+                "-y", "-loglevel", "error",
+                "-f", "lavfi",
+                "-i", `color=c=#${sceneHex}:s=${width}x${height}:d=1`,
+                "-vframes", "1",
+                cardPath,
+              ], { maxBuffer: 5 * 1024 * 1024 });
+              created.push(`${scene.id}(lavfi-fallback)`);
+            } catch {
+              await writeFile(cardPath, Buffer.alloc(1));
+              created.push(`${scene.id}(placeholder)`);
+            }
           }
         }
       }
@@ -781,12 +803,13 @@ function escapeAs(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function hexToRgbComponents(hex: string): string {
+/** Pixelmator Pro AppleScript colors are 16-bit {0..65535} — multiply 8-bit channel by 257. */
+function hexToRgb16(hex: string): string {
   const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16) / 255;
-  const g = parseInt(h.slice(2, 4), 16) / 255;
-  const b = parseInt(h.slice(4, 6), 16) / 255;
-  return `${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)}`;
+  const r = Math.round(parseInt(h.slice(0, 2), 16) * 257);
+  const g = Math.round(parseInt(h.slice(2, 4), 16) * 257);
+  const b = Math.round(parseInt(h.slice(4, 6), 16) * 257);
+  return `${r}, ${g}, ${b}`;
 }
 
 // ---------------------------------------------------------------------------
