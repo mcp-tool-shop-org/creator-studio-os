@@ -8,7 +8,6 @@
 
 <p align="center">
   <a href="https://github.com/mcp-tool-shop-org/creator-studio-os/actions/workflows/ci.yml"><img src="https://github.com/mcp-tool-shop-org/creator-studio-os/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://codecov.io/gh/mcp-tool-shop-org/creator-studio-os"><img src="https://codecov.io/gh/mcp-tool-shop-org/creator-studio-os/branch/main/graph/badge.svg" alt="Coverage"></a>
   <a href="https://www.npmjs.com/org/creator-studio-os"><img src="https://img.shields.io/badge/npm-%40creator--studio--os-CB3837.svg" alt="npm scope"></a>
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
   <a href="https://mcp-tool-shop-org.github.io/creator-studio-os/"><img src="https://img.shields.io/badge/docs-handbook-informational" alt="Handbook"></a>
