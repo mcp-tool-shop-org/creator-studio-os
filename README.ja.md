@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="README.md">English</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.pt-BR.md">Português (BR)</a>
+  <a href="README.md">English</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português (BR)</a>
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="400">
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="550">
 </p>
 
 <p align="center">
@@ -13,27 +13,27 @@
   <a href="https://mcp-tool-shop-org.github.io/creator-studio-os/"><img src="https://img.shields.io/badge/docs-handbook-informational" alt="Handbook"></a>
 </p>
 
-MCPコントロールプレーンは、Apple Creator Studioアプリ向けです。**Final Cut Pro**、**Compressor**、**Motion**、**Pixelmator Pro**、**Logic Pro**、**Keynote**、**Pages**、および**Numbers**をClaudeまたはその他のMCPクライアントから操作できます。JSON仕様に基づいてビデオの成果物を生成したり、Motionのローワーサードをヘッドレスでレンダリングしたり、Compressorでエンコードしたり、クロスアプリのパイプラインでブランドアセットを生成したりできます。
+MCPコントロールプレーンは、Apple Creator Studioアプリ向けです。Claudeまたは任意のMCPクライアントから、**Final Cut Pro**、**Compressor**、**Motion**、**Pixelmator Pro**、**Logic Pro**、**Keynote**、**Pages**、および**Numbers**を操作できます。JSON仕様からビデオ成果物を生成したり、Motionのローワーサードをヘッドレスでレンダリングしたり、Compressorでエンコードしたり、クロスアプリのパイプラインでブランドアセットを生成したりできます。
 
-**v1.7.10** — 全ての8つのApple Creator Studioアプリで、78種類のツールを提供。クロスアプリの複合プロトコルが稼働中：Pixelmatorのブランドカード + MotionのProRes 4444ローワーサード + Compressorによる最終エンコード。9つのすべてのフェーズが正常に完了。macOSのみ。
+**v1.7.10** — 全8つのApple Creator Studioアプリで、78種類のツールを提供。クロスアプリの複合プロトコルが稼働中：Pixelmatorのブランドカード + MotionのProRes 4444ローワーサード + Compressorによる最終エンコード。9つのすべてのフェーズが正常に完了。macOSのみ。
 
 ---
 
 ## この機能の目的
 
-Final Cut ProのAppleScript辞書は**読み取り専用**です。ライブラリをリストしたり、メタデータを読み取ったりできますが、AppleScriptを使用してタイムラインを作成することはできません。サポートされている作成パスは**FCPXMLインポート**です。適切にフォーマットされたFCPXML 1.14ドキュメントを作成し、Final Cut Proに渡すと、Final Cut Proがプロジェクトを作成します。
+**Final Cut Pro**のAppleScript辞書は**読み取り専用**です。ライブラリをリストしたり、メタデータを読み取ったりできますが、AppleScriptを使用してタイムラインを作成することはできません。サポートされている作成パスは、**FCPXMLインポート**です。適切にフォーマットされたFCPXML 1.14ドキュメントを作成し、Final Cut Proに渡すと、Final Cut Proがプロジェクトを作成します。
 
-`creator-studio-os`は、その橋渡し役です。Claudeは、JSON仕様としてタイムラインを作成し、サーバーがFCPXMLをビルドおよび検証し、FCPインポートをトリガーし、Compressorを使用してMotionのローワーサードテンプレートをヘッドレスでレンダリングし、Pixelmator Proを使用してブランドアセットを生成します。これらはすべて、単一のクロスアプリのパイプラインで行われます。
+`creator-studio-os`は、その橋渡し役です。Claudeは、JSON仕様としてタイムラインを作成し、サーバーがFCPXMLを構築および検証し、FCPインポートをトリガーし、Compressorを介してMotionのローワーサードテンプレートをヘッドレスでレンダリングし、Pixelmator Proを使用してブランドアセットを生成します。これらはすべて、単一のクロスアプリのパイプラインで行われます。
 
 ## セキュリティ
 
 `creator-studio-os`は、完全にデバイス上で動作します。
 
-- アプリをバンドルID（ファイル名ではなく）に基づいて起動します。
+- アプリをバンドルID（ファイル名ではなく）でターゲットにして`osascript`を実行します。
 - `CREATOR_STUDIO_DATA_DIR`内のみに書き込みます。システムファイルやFinal Cut Proのライブラリの内部構造にはアクセスしません。
 - **ネットワーク接続は一切行いません**。テレメトリー、分析、リモート検証は行いません。
 - **認証情報、トークン、またはユーザーデータは保存しません**。
-- AppleScriptの補間を行う前に、ユーザーが提供したすべての文字列をエスケープします（`escapeAppleScriptString`）。
+- ユーザーが提供したすべての文字列を、AppleScriptの補間処理の前にエスケープします（`escapeAppleScriptString`）。
 
 詳細な脅威モデル：[`docs/threat-model.md`](./docs/threat-model.md) · [`SECURITY.md`](./SECURITY.md)
 
@@ -93,7 +93,7 @@ creator-studio/
 
 ## クロスアプリプロトコル：`brand-deck-minimal`
 
-主要なパイプライン：`project.json`仕様からProRes MOVまでの13の手順：
+主要なパイプライン：`project.json`仕様からProRes MOVまでの13のステップ：
 
 ```bash
 creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/project.json
@@ -126,11 +126,11 @@ creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/p
 | `fcp_project_list` | データディレクトリ内のプロジェクトをリスト |
 | `fcp_project_create` | プロジェクトディレクトリと`project.json`を作成 |
 | `fcp_project_info` | プロジェクトのメタデータと解決されたパスを読み取り |
-| `fcp_fcpxml_build` | JSON仕様からFCPXML 1.14をビルド |
+| `fcp_fcpxml_build` | JSON仕様からFCPXML 1.14を構築 |
 | `fcp_fcpxml_validate` | バンドルされたDTDに対してFCPXMLを検証 |
 | `fcp_fcpxml_write` | FCPXMLを`projects/<name>/fcp/`に書き込み |
 | `fcp_fcpxml_import` | Final Cut ProでFCPXMLファイルを開く |
-| `fcp_fcpxml_build_write_import` | エンドツーエンド：ビルド → 検証 → 書き込み → インポート |
+| `fcp_fcpxml_build_write_import` | エンドツーエンド：構築 → 検証 → 書き込み → インポート |
 | `fcp_library_list` | Final Cut Proで開いているライブラリをリスト |
 | `fcp_library_events` | ライブラリ内のイベントをリスト |
 | `fcp_event_projects` | イベント内のプロジェクトをリスト |
@@ -139,15 +139,15 @@ creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/p
 | `fcp_round_trip_diff` | 2つのFCPXMLファイルを比較し、構造化された差分を出力 |
 | `fcp_fcpxml_add_title` | スプラインにタイトルエフェクトクリップを追加 |
 | `fcp_fcpxml_add_transition` | クリップ間にトランジションを追加 |
-| `fcp_fcpxml_add_marker` | チャプター/ToDo/完了マーカーを追加 |
+| `fcp_fcpxml_add_marker` | チャプター/TODO/完了マーカーを追加 |
 | `fcp_safety_preflight` | インポート前に、すべてのFCPXMLソースファイルが存在することを確認 |
-| `fcp_multicam_build` | アングル仕様からマルチカムクリップをビルド |
+| `fcp_multicam_build` | アングル仕様からマルチカムクリップを構築 |
 | `fcp_caption_build` | トランスクリプトからキャプショントラックを作成します。 |
 | `fcp_compound_clip_build` | ネストされたスパイン仕様から複合クリップを作成します。 |
 
-### コンプレッサー (15ツール)
+### Compressor (15ツール)
 
-コンプレッサーにはAppleScriptの辞書がありません。インターフェースはCLIと`.compressorbatch`ファイルです。セッションごとの初回起動時に、App Storeの認証検証が実行されます（期待通り）。
+CompressorにはAppleScriptの辞書がありません。インターフェースはCLIと`.compressorbatch`ファイルです。セッションごとの初回起動時に、App Storeの認証検証が実行されます（期待通り）。
 
 | ツール | 目的 |
 |------|---------|
@@ -163,11 +163,11 @@ creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/p
 | `compressor_settings_inspect` | `.compressorsetting`ファイルの内容を確認します。 |
 | `compressor_batch_build` | `.compressorbatch` XMLドキュメントを作成します。 |
 | `compressor_await_output` | 出力ファイルが空でなくなるまで待機します。 |
-| `compressor_daemon_recover` | 停止したコンプレッサーデーモンを復旧します。 |
+| `compressor_daemon_recover` | Compressorデーモンが停止した場合に復旧します。 |
 
 [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md)を参照してください。
 
-### モーション (10ツール)
+### Motion (10ツール)
 
 | ツール | 目的 |
 |------|---------|
@@ -177,11 +177,11 @@ creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/p
 | `motion_template_set_param` | 公開パラメータの値を設定します（OZML編集）。 |
 | `motion_template_get_params` | テンプレート内のすべての公開パラメータをリストします。 |
 | `motion_template_validate` | `.motn`ファイルのOZML構造を検証します。 |
-| `motion_template_publish_catalog` | モーションの公開カタログ内のすべてのテンプレートをリストします。 |
-| `motion_publish_to_fcp` | モーションテンプレートをFinal Cut Proのタイトルブラウザに公開します。 |
-| `motion_render_via_compressor` | コンプレッサー経由で`.motn`ファイルをビデオにレンダリングします（ヘッドレス）。 |
+| `motion_template_publish_catalog` | Motionの公開カタログ内のすべてのテンプレートをリストします。 |
+| `motion_publish_to_fcp` | MotionテンプレートをFCPのタイトルブラウザに公開します。 |
+| `motion_render_via_compressor` | Compressor経由で`.motn`ファイルをビデオにレンダリングします（ヘッドレス）。 |
 
-注意：`motion_template_set_param`と`motion_render_via_compressor`は、どのMCP環境でも先行事例がありません。ヘッドレスのモーションOZMLの変更とレンダリングは、csosによってのみ実現可能です。
+注意：`motion_template_set_param`と`motion_render_via_compressor`は、どのMCP環境においても先行事例がありません。ヘッドレスMotionのOZMLの変更とレンダリングは、csosによってのみ実現可能です。
 
 ### Pixelmator Pro (33ツール)
 
@@ -189,39 +189,39 @@ creator-studio-os protocol run brand-deck-minimal --project demo/csos-showcase/p
 |------|---------|
 | `pixelmator_app_open` / `pixelmator_app_running` | ライフサイクル |
 | `pixelmator_open` / `pixelmator_close` | ドキュメントを開く/閉じる |
-| `pixelmator_export` | PNG / JPEG / TIFF / HEIC / GIF / WebP / PDF / SVG形式でエクスポート |
+| `pixelmator_export` | PNG / JPEG / TIFF / HEIC / GIF / WebP / PDF / SVGにエクスポート |
 | `pixelmator_resize` / `pixelmator_crop` / `pixelmator_rotate` / `pixelmator_flip` | 変換 |
-| `pixelmator_batch_export_project_images` | `projects/<name>/images/`ディレクトリ内のファイルを一括変換 |
+| `pixelmator_batch_export_project_images` | `projects/<name>/images/`ディレクトリ内のファイルを一括変換します。 |
 | `pixelmator_layer_list` / `pixelmator_layer_create` / `pixelmator_layer_delete` | レイヤーの管理 |
 | `pixelmator_layer_set_text` / `pixelmator_layer_set_fill` / `pixelmator_layer_move` | レイヤーの編集 |
-| `pixelmator_effects_apply` / `pixelmator_effects_catalog` | MLエフェクトパイプライン |
-| `pixelmator_compose_brand_card` | タイトルテキスト付きの、色を変更したブランドカードを作成します。 |
+| `pixelmator_effects_apply` / `pixelmator_effects_catalog` | MLエフェクトのパイプライン |
+| `pixelmator_compose_brand_card` | タイトルテキスト付きの、色相回転されたブランドカードを作成します。 |
 | `pixelmator_hdr_export` | HDRトーンマッピングでエクスポートします。 |
-| `pixelmator_text_card` | フォントと色の制御可能なテキストカードをレンダリングします。 |
+| `pixelmator_text_card` | フォントと色の制御可能なテキストのみのカードをレンダリングします。 |
 
 ### Logic Pro (3ツール)
 
-Logic ProにはAppleScriptの辞書がありません。インターフェース：ライフサイクルと、`.logicx`プロジェクトのファイルを開く機能。
+LogicにはAppleScriptの辞書がありません。インターフェース：ライフサイクルと、`.logicx`プロジェクトのファイルを開く機能。
 
 | ツール | 目的 |
 |------|---------|
 | `logic_app_open` / `logic_app_running` | ライフサイクル |
 | `logic_open` | `.logicx`プロジェクトを開きます。 |
 
-### Keynote / Pages / Numbers (合計18ツール)
+### Keynote / Pages / Numbers (18ツールを組み合わせたもの)
 
-これら3つは、ほぼ同一のAppleScript構造を持っています。完全なエクスポート形式カタログ：[`docs/reference/iwork-automation.md`](./docs/reference/iwork-automation.md)。
+これら3つは、ほぼ同一のAppleScriptの構造を持っています。完全なエクスポート形式カタログ：[`docs/reference/iwork-automation.md`](./docs/reference/iwork-automation.md)。
 
-**Keynote (8ツール):** 開く、閉じる、PDF / 画像 / ムービー / PPTX形式でエクスポート、ライフサイクル
-**Pages (5ツール):** 開く、閉じる、PDF / Word / RTF / EPUB形式でエクスポート、ライフサイクル
-**Numbers (5ツール):** 開く、閉じる、PDF / Excel / CSV形式でエクスポート、ライフサイクル
+**Keynote (8ツール):** 開く、閉じる、PDF / 画像 / ムービー / PPTXにエクスポート、ライフサイクル
+**Pages (5ツール):** 開く、閉じる、PDF / Word / RTF / EPUBにエクスポート、ライフサイクル
+**Numbers (5ツール):** 開く、閉じる、PDF / Excel / CSVにエクスポート、ライフサイクル
 
 ### インフラストラクチャ
 
 | ツール | 目的 |
 |------|---------|
 | `csos_app_status` | すべての8つのアプリケーションの状態を確認します（実行中、バージョン、キューの深さ）。 |
-| `csos_protocol_run` | クロスアプリケーションのプロトコルをエンドツーエンドで実行します（非同期、ステップをストリームで実行）。 |
+| `csos_protocol_run` | クロスアプリのプロトコルをエンドツーエンドで実行します（非同期、ステップをストリームで実行）。 |
 | `csos_protocol_list` | 登録されているすべてのプロトコルをリストします。 |
 | `csos_protocol_describe` | プロトコルの手順と目的を説明します。 |
 
@@ -233,18 +233,18 @@ Logic ProにはAppleScriptの辞書がありません。インターフェース
 pip install tool-compass
 ```
 
-テスト環境では、フェーズ7において12種類の代表的なクエリが検証されます。 説明文の変更によって、特定のクエリがスコア0.4以上のトップ3から外れる場合、テストに失敗します。
+スモークテストでは、フェーズ7で12の代表的なクエリが検証されます。 説明の変更によって、特定のクエリがスコア0.4を超えるトップ3から外れる場合、スモークテストは失敗となります。
 
 ## 権限
 
-サーバーが初めてアプリケーションに対してAppleScriptを使用する場合、macOSはシステム設定 → プライバシーとセキュリティ → 自動化で、**自動化の許可**を求めるプロンプトを表示します。 読み取り専用のAppleScriptでも、この許可が必要です。
+サーバーがアプリケーションに対してAppleScriptを初めて使用する場合、macOSはシステム設定 → プライバシーとセキュリティ → 自動化で、**自動化の許可**を求めるプロンプトを表示します。 読み取り専用のAppleScriptでも、この許可が必要です。
 
 ## CI / 検証
 
 | 確認 | 何 |
 |-------|------|
 | **A. Security** | [`SECURITY.md`](./SECURITY.md)、[`docs/threat-model.md`](./docs/threat-model.md)、機密情報は含まれていません、テレメトリー機能はありません、ネットワーク接続もありません。 |
-| **B. Errors** | `CreatorStudioError { code, message, hint }`、CLIのエラーコード、スタックトレースは表示されません。 |
+| **B. Errors** | `CreatorStudioError { code, message, hint }`、CLIのエラーコード、生のスタックトレースは表示されません。 |
 | **C. Docs** | このREADME、[`CHANGELOG.md`](./CHANGELOG.md)、[`LICENSE`](./LICENSE)、`--help` の内容は正確です。 |
 | **D. Hygiene** | `npm test`、`npm run typecheck`、バージョンはタグと一致、`npm audit`、クリーンなパッケージング。 |
 
@@ -252,11 +252,11 @@ CIは`ubuntu-latest`上で実行されます（型チェック + ビルド + ユ
 
 ## ロードマップ
 
-- **v1.7.x** — 複数のアプリケーションを組み合わせたプロトコル (`brand-deck-minimal`): Pixelmatorのブランドカード + Motionのローワーサード + Compressorによるエンコード → ProRes MOV — **v1.7.10でリリース**
-- **v1.8.x** — `patchSiblingText` のテキスト範囲検証: 入力テキストが固定されたMotionテンプレートのレンダリング範囲からはみ出す可能性がある場合、警告が表示されます。
-- **v2.0** — フェーズ3: プロトコルの機能拡張（Steamのトレーラー、開発ログ、ソーシャルカードのパイプライン）
+- **v1.7.x** — クロスアプリケーション複合プロトコル (`brand-deck-minimal`): Pixelmatorのブランドカード + Motionのローワーサード + Compressorによるエンコード → ProRes MOV — **v1.7.10でリリース**
+- **v1.8.x** — `patchSiblingText` のテキスト境界検証：入力テキストが固定されたMotionテンプレートのレンダリング範囲からはみ出す可能性がある場合、警告を表示します。
+- **v2.0** — フェーズ3：プロトコル機能の拡張（Steamのトレーラー、開発ログ、ソーシャルカードのパイプライン）
 
-アプリケーションのロードマップ: [`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md)、[`docs/roadmap-compressor.md`](./docs/roadmap-compressor.md)、[`docs/roadmap.md`](./docs/roadmap.md)。
+アプリケーションのロードマップ：[`docs/roadmap-fcp.md`](./docs/roadmap-fcp.md)、[`docs/roadmap-compressor.md`](./docs/roadmap-compressor.md)、[`docs/roadmap.md`](./docs/roadmap.md)。
 
 ## ライセンス
 

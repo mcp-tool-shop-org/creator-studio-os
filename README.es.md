@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.md">English</a> | <a href="README.fr.md">Français</a> | <a href="README.pt-BR.md">Português (BR)</a>
+  <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.md">English</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português (BR)</a>
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="400">
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/creator-studio-os/readme.png" alt="Creator Studio OS" width="550">
 </p>
 
 <p align="center">
@@ -68,7 +68,7 @@ O mediante npx:
 creator-studio-os verify
 ```
 
-Verifica la plataforma, `osascript`, `xmllint`, la instalación de Final Cut Pro, el DTD FCPXML 1.14, el directorio de datos y ejecuta una operación de ida y vuelta de FCPXML a través del DTD incluido.
+Verifica la plataforma, `osascript`, `xmllint`, la instalación de Final Cut Pro, el DTD de FCPXML 1.14, el directorio de datos y ejecuta una operación de ida y vuelta de FCPXML a través del DTD incluido.
 
 ## Directorio de datos
 
@@ -136,14 +136,14 @@ El formato de `project.json`: [`src/projects/types.ts`](./src/projects/types.ts)
 | `fcp_event_projects` | Lista los proyectos en un evento |
 | `fcp_project_metadata` | Lee la duración de la secuencia, la frecuencia de fotogramas y el formato de la señal de tiempo |
 | `fcp_app_open` / `fcp_app_running` / `fcp_app_activate` | Ciclo de vida |
-| `fcp_round_trip_diff` | Compara dos archivos FCPXML y muestra las diferencias de forma estructurada |
+| `fcp_round_trip_diff` | Compara dos archivos FCPXML y genera una diferencia estructurada |
 | `fcp_fcpxml_add_title` | Agrega un clip de efecto de títulos a una secuencia |
 | `fcp_fcpxml_add_transition` | Agrega una transición entre clips |
-| `fcp_fcpxml_add_marker` | Agrega un marcador de capítulo/tarea/completado |
+| `fcp_fcpxml_add_marker` | Agrega un marcador de capítulo/tarea pendiente/completado |
 | `fcp_safety_preflight` | Verifica que todos los archivos fuente de FCPXML existan antes de la importación |
 | `fcp_multicam_build` | Crea un clip multicámara a partir de las especificaciones de los ángulos |
 | `fcp_caption_build` | Construir una pista de subtítulos a partir de una transcripción. |
-| `fcp_compound_clip_build` | Construir un clip compuesto a partir de especificaciones de estructura anidadas. |
+| `fcp_compound_clip_build` | Construir un clip compuesto a partir de especificaciones de secuencia anidadas. |
 
 ### Compresor (15 herramientas)
 
@@ -161,9 +161,9 @@ Compresor no tiene diccionario de AppleScript; la interfaz es la línea de coman
 | `compressor_batch_status` | Consultar el estado de todos los trabajos por lotes activos. |
 | `compressor_cancel_job` | Cancelar un trabajo activo. |
 | `compressor_settings_inspect` | Inspeccionar un archivo `.compressorsetting`. |
-| `compressor_batch_build` | Crear un documento XML `.compressorbatch`. |
+| `compressor_batch_build` | Construir un documento XML `.compressorbatch`. |
 | `compressor_await_output` | Esperar hasta que un archivo de salida no esté vacío. |
-| `compressor_daemon_recover` | Recuperar un demonio de Compressor que se ha bloqueado. |
+| `compressor_daemon_recover` | Recuperar un demonio de Compressor bloqueado. |
 
 Ver [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md).
 
@@ -181,14 +181,14 @@ Ver [`docs/reference/compressor-cli.md`](./docs/reference/compressor-cli.md).
 | `motion_publish_to_fcp` | Publicar una plantilla de Motion en el navegador de títulos de FCP. |
 | `motion_render_via_compressor` | Renderizar una plantilla `.motn` a video de forma autónoma a través de Compressor. |
 
-Nota: `motion_template_set_param` y `motion_render_via_compressor` no tienen precedentes en ninguna herramienta MCP a nivel global; la mutación y el renderizado autónomos de Motion OZML están habilitados de forma única por csos.
+Nota: `motion_template_set_param` y `motion_render_via_compressor` no tienen precedentes en ninguna herramienta MCP global; la mutación y el renderizado autónomos de Motion OZML están habilitados de forma única por csos.
 
 ### Pixelmator Pro (33 herramientas)
 
 | Herramienta | Propósito |
 |------|---------|
 | `pixelmator_app_open` / `pixelmator_app_running` | Ciclo de vida |
-| `pixelmator_open` / `pixelmator_close` | Abrir/cerrar documentos. |
+| `pixelmator_open` / `pixelmator_close` | Abrir / cerrar documentos. |
 | `pixelmator_export` | Exportar a PNG / JPEG / TIFF / HEIC / GIF / WebP / PDF / SVG. |
 | `pixelmator_resize` / `pixelmator_crop` / `pixelmator_rotate` / `pixelmator_flip` | Transformar. |
 | `pixelmator_batch_export_project_images` | Conversión por lotes de `projects/<name>/images/`. |
@@ -210,7 +210,7 @@ Logic no tiene diccionario de AppleScript. Interfaz: ciclo de vida y transferenc
 
 ### Keynote / Pages / Numbers (18 herramientas combinadas)
 
-Las tres comparten una estructura de AppleScript casi idéntica. Catálogo completo de formatos de exportación: [`docs/reference/iwork-automation.md`](./docs/reference/iwork-automation.md).
+Las tres comparten una forma de AppleScript casi idéntica. Catálogo completo de formatos de exportación: [`docs/reference/iwork-automation.md`](./docs/reference/iwork-automation.md).
 
 **Keynote (8 herramientas):** abrir, cerrar, exportar PDF / imágenes / película / PPTX, ciclo de vida.
 **Pages (5 herramientas):** abrir, cerrar, exportar PDF / Word / RTF / EPUB, ciclo de vida.
@@ -233,7 +233,7 @@ Las tres comparten una estructura de AppleScript casi idéntica. Catálogo compl
 pip install tool-compass
 ```
 
-El "harness" de pruebas verifica 12 consultas representativas en la Fase 7. Cualquier cambio en la descripción que elimine un resultado del top 3 con una puntuación > 0.4, provoca que la prueba falle.
+El "harness" de pruebas verifica 12 consultas representativas en la Fase 7. Cualquier cambio en la descripción que elimine un objetivo del top 3 con una puntuación > 0.4, provoca que la prueba falle.
 
 ## Permisos
 
@@ -241,14 +241,14 @@ La primera vez que el servidor utiliza AppleScript con una aplicación, macOS so
 
 ## CI / verificación
 
-| Comprobar. | ¿Qué? |
+| Comprobación. | ¿Qué? |
 |-------|------|
 | **A. Security** | [`SECURITY.md`](./SECURITY.md), [`docs/threat-model.md`](./docs/threat-model.md), sin secretos, sin telemetría, sin red. |
 | **B. Errors** | `CreatorStudioError { code, message, hint }`, códigos de salida de la línea de comandos, sin trazas de pila sin procesar. |
 | **C. Docs** | Este archivo README, [`CHANGELOG.md`](./CHANGELOG.md), [`LICENSE`](./LICENSE), `--help` preciso. |
 | **D. Hygiene** | `npm test`, `npm run typecheck`, la versión coincide con la etiqueta, `npm audit`, empaquetado limpio. |
 
-CI se ejecuta en `ubuntu-latest` (verificación de tipos + compilación + pruebas unitarias + auditoría). Las pruebas de integración contra aplicaciones reales se ejecutan a través de `npm run smoke:ci`; los entornos de ejecución de macOS no están incluidos intencionalmente en CI (el costo de macOS es aproximadamente 10 veces el de Linux por minuto).
+CI se ejecuta en `ubuntu-latest` (verificación de tipos + compilación + pruebas unitarias + auditoría). Las pruebas de integración contra aplicaciones reales se ejecutan a través de `npm run smoke:ci`; los entornos de macOS no están incluidos en CI de forma intencionada (el costo de macOS es aproximadamente 10 veces el de Linux por minuto).
 
 ## Hoja de ruta
 
